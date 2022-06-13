@@ -66,6 +66,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.render_mode = render_mode
 
         self.screen = None
+        self.clock = None
 
     def create_map(self):
         self._map = np.zeros((self._size_maze, self._size_maze))
