@@ -208,7 +208,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
             gfxdraw.pixel(self.surf, x, y, (0, 0, 0))
 
         self.surf = pygame.transform.scale(self.surf, (self.screen_width, self.screen_height))
-        # self.surf = pygame.transform.rotate(self.surf, 90)
+        self.surf = pygame.transform.rotate(self.surf, 90)
         
         self.surf = pygame.transform.flip(self.surf, False, True)
         self.screen.blit(self.surf, (0, 0))
