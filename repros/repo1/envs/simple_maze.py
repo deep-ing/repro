@@ -204,7 +204,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.surf = pygame.Surface((self._size_maze*6, self._size_maze*6))
         self.surf.fill((255, 255, 255))
         
-        for y, x in np.transpose(self.state.nonzero()):
+        for x, y in np.transpose(self.state.nonzero()):
             gfxdraw.pixel(self.surf, x, y, (0, 0, 0))
 
         self.surf = pygame.transform.scale(self.surf, (self.screen_width, self.screen_height))
