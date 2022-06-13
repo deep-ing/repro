@@ -215,7 +215,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         if mode == "human":
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
-            pygame.display.flip()
+            # pygame.display.flip()
 
         elif mode in {"rgb_array", "single_rgb_array"}:
             return np.transpose(
