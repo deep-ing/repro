@@ -188,10 +188,10 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
             if mode == "human":
                 pygame.display.init()
                 self.screen = pygame.display.set_mode(
-                    (self._size_maze*6, self._size_maze*6)
+                    (self.screen_width, self.screen_height)
                 )
             else:  # mode in {"rgb_array", "single_rgb_array"}
-                self.screen = pygame.Surface((self._size_maze*6, self._size_maze*6))
+                self.screen = pygame.Surface((self.screen_width, self.screen_height))
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
