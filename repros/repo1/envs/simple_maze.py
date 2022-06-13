@@ -121,17 +121,20 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
     def act(self, action):
         self._cur_action = action
         if action == 0:
-            if self._map[self._pos_agent[0],self._pos_agent[1]+1] == 0:
-                self._pos_agent[1] = self._pos_agent[1] + 1
-        elif action == 1:
-            if self._map[self._pos_agent[0],self._pos_agent[1]-1] == 0:
-                self._pos_agent[1] = self._pos_agent[1] - 1
-        elif action == 2:
             if self._map[self._pos_agent[0]-1,self._pos_agent[1]] == 0:
                 self._pos_agent[0] = self._pos_agent[0] - 1
-        elif action == 3:
+        elif action == 1:
             if self._map[self._pos_agent[0]+1,self._pos_agent[1]] == 0:
                 self._pos_agent[0] = self._pos_agent[0] + 1
+        elif action == 2:
+            if self._map[self._pos_agent[0],self._pos_agent[1]-1] == 0:
+                self._pos_agent[1] = self._pos_agent[1] - 1
+        elif action == 3:
+            if self._map[self._pos_agent[0],self._pos_agent[1]+1] == 0:
+                self._pos_agent[1] = self._pos_agent[1] + 1
+        
+        
+        
 
     def observe(self):
         obs = copy.deepcopy(self._map)
