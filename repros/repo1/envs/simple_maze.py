@@ -65,8 +65,12 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
+        self.screen_width = 600
+        self.screen_height = 600
         self.screen = None
         self.clock = None
+        self.isopen = True
+        self.state = None
 
     def create_map(self):
         self._map = np.zeros((self._size_maze, self._size_maze))
@@ -193,8 +197,6 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         if self.state is None:
             return None
-
-        x = self.state
 
         self.surf = pygame.Surface((self._size_maze*6, self._size_maze*6))
         self.surf.fill((255, 255, 255))
