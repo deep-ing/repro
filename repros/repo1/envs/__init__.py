@@ -1,2 +1,2 @@
-from labyrinth import LabyrinthEnv
-from catcher import CatcherEnv
+from envs.simple_maze import SimpleMazeEnv
+# from envs.catcher import CatcherEnv
