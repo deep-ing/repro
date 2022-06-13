@@ -210,7 +210,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.surf = pygame.transform.scale(self.surf, (self.screen_width, self.screen_height))
         self.surf = pygame.transform.rotate(self.surf, 90)
         
-        self.surf = pygame.transform.flip(self.surf, False, True)
+        # self.surf = pygame.transform.flip(self.surf, False, True)
         self.screen.blit(self.surf, (0, 0))
         if mode == "human":
             pygame.event.pump()
