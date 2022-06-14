@@ -15,10 +15,10 @@ def compute_model_free_loss(state_action_values, next_state_values, rewards, gam
     expected_state_action_values = rewards + next_state_values * gamma
     return MSELOSS(state_action_values, expected_state_action_values)
 
-def compute_transition_loss(transition, encoded_states):
+def compute_transition_loss(transition, encoded_next_states):
     assert transition.ndim == 2 # vector representation
-    assert transition.size()[1:] == encoded_states.size()[1:]
-    return MSELOSS(transition, encoded_states)
+    assert transition.size()[1:] == encoded_next_states.size()[1:]
+    return MSELOSS(transition, encoded_next_states)
 
 def compute_reward_loss(reward_predictions, rewards):
     assert reward_predictions.ndim == 2 # vector representation

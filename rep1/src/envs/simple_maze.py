@@ -133,8 +133,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
             if self._map[self._pos_agent[0],self._pos_agent[1]+1] == 0:
                 self._pos_agent[1] = self._pos_agent[1] + 1
         
-        
-        
+         
 
     def observe(self):
         obs = copy.deepcopy(self._map)
