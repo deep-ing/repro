@@ -1,7 +1,7 @@
-
 import torch 
 import torch.nn as nn 
 from model.q_net import QNet
+
 class CRAR():
     def __init__(self, observation_space, action_space, flags):
         self.observation_space = observation_space
