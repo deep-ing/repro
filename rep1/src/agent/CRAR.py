@@ -1,6 +1,7 @@
 import torch 
 import torch.nn as nn 
-from model.q_net import QNet
+from model.encoder import Encoder
+import numpy as np 
 from utils.losses import (
     compute_LD1_loss,
     compute_LD1_prime_loss,
@@ -17,13 +18,14 @@ class CRAR():
         self.beta = self.flags.beta 
         self.discount_factor = self.flags.discount_factor
         self.abstract_dim = self.flags.abstract_dim 
+        self.epsilon = self.flags.epsilon_init
         
-        self.q_net =  nn.Linear(10,20) 
-        self.q_target_net = nn.Linear(10,20) 
-        self.encoder =  nn.Linear(10,20) 
-        self.transition_net = nn.Linear(10,20) 
-        self.reward_net = nn.Linear(10,20)  
-        self.discount_net = nn.Linear(10,20)
+        self.encoder =  Encoder(self.abstract_dim).to(flags.device)
+        self.q_net =  nn.Linear(self.abstract_dim, action_space.n).to(flags.device)
+        self.q_target_net = nn.Linear(self.abstract_dim, action_space.n).to(flags.device) 
+        self.transition_net = nn.Linear(self.abstract_dim,self.abstract_dim).to(flags.device) 
+        self.reward_net = nn.Linear(self.abstract_dim, 1).to(flags.device)  
+        self.discount_net = nn.Linear(self.abstract_dim, 1).to(flags.device)
         
         params = list(self.q_net.parameters()) \
                + list(self.encoder.parameters()) \
@@ -41,7 +43,6 @@ class CRAR():
         states, actions, rewards, dones, next_states = batch
         random_states1, _, _, _, _ = random_batch_1
         random_states2, _, _, _, _ = random_batch_2
-        
         encoded_states = self.encoder(states)
         encoded_next_states = self.encoder(next_states)
         encoded_random_states1 = self.encoder(random_states1)
@@ -49,7 +50,7 @@ class CRAR():
         
         # Q Values 
         q_values = self.q_net.forward(encoded_states).gather(-1, (actions.to(torch.int64)))
-        next_q_values = self.q_target_net.forward(next_states).detach().max(dim=-1)[0].unsqueeze(-1)
+        next_q_values = self.q_target_net.forward(encoded_next_states).detach().max(dim=-1)[0].unsqueeze(-1)
         next_q_values[dones] = 0         
         # Transition, Reward, Discount 
         transition_pred = self.transition_net(encoded_states)
@@ -66,9 +67,9 @@ class CRAR():
         ld_loss = ld1_loss + self.beta * ld1_prime_loss + ld2_loss
         loss =  mf_loss + reward_loss + transition_loss + ld_loss
         
-        self.optimzer.zero_grad()
+        self.optimizer.zero_grad()
         loss.backward()
-        self.optimzer.step()
+        self.optimizer.step()
     
     def act(self, obs):
         if self.flags.random_action:  
@@ -79,3 +80,7 @@ class CRAR():
     
     def update_target(self):
         self.q_target_net.load_state_dict(self.q_net.state_dict())
+
+    def anneal_epsilon(self):
+        self.epsilon *= 0.99
+        self.epsilon = max(self.epsilon, self.flags.epsilon_min)

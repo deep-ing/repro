@@ -2,18 +2,19 @@ from collections import deque
 import torch
 import numpy as np
 class RolloutBuffer:
-    def __init__(self, maxlen, value_name_list):
+    def __init__(self, maxlen, value_name_list, obs_preprocessing=None):
         self.maxlen = maxlen
         self.values_to_stroe = value_name_list
         self.deques = {}
         for value in self.values_to_stroe:
             self.deques[value] = deque(maxlen=self.maxlen)
+        self.obs_preprocessing = obs_preprocessing
         
-    def append(self, values, device,  observation_function=lambda x:x):
+    def append(self, values, device):
         assert set(values.keys()) == set(self.values_to_stroe)
         for key, value in values.items():
             if (isinstance(value, np.ndarray)) :
-                value = observation_function(torch.Tensor(value).to(device))
+                value = self.obs_preprocessing(torch.Tensor(value).to(device))
             elif isinstance(value, (float)) :
                 value = torch.Tensor([value]).to(device)
             elif isinstance(value, (bool)) :
