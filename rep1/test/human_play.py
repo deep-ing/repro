@@ -1,6 +1,4 @@
-
-
-def test_envdebugging():
+def test_humanplay():
     from src.envs import SimpleMazeEnv
     from src.envs import MazeEnv
 
@@ -26,4 +24,4 @@ def test_envdebugging():
 
 
 if __name__ == "__main__":
-    test_envdebugging()
+    test_humanplay()
