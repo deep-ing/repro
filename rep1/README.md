@@ -7,9 +7,11 @@ Reproducing
 ```bash 
 
 # Environment Test
-bash evn_simple_maze_gui.sh
+bash shells/evn_simple_maze_gui.sh
+
+# Test Loss 
+bash shells/test_losses.sh
 
 # Train 
-bash train.sh
-
+bash shells/train.sh
 ```
