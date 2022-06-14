@@ -1,8 +1,9 @@
 """
-A simple labyrinth environment reproduced by Cheongwoong Kang.
+A labyrinth environment reproduced by Cheongwoong Kang.
 reference: https://arxiv.org/pdf/1809.04506.pdf
 """
 import copy
+from .a_star_path_finding import AStar
 from typing import Optional, Union
 
 import numpy as np
@@ -12,7 +13,7 @@ from gym import logger, spaces
 from gym.error import DependencyNotInstalled
 
 
-class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
+class MazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
     """
     ### Description
 
@@ -35,15 +36,16 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
     ### Rewards
 
-    This simple labyrinth environment has no reward.
+    The reward is given when the agent reaches one of the three keys that are randomly placed in the map.
 
     ### Starting State
 
-    The agent starts at (2,2).
+    The agent starts at (1,1).
 
     ### Episode Termination
 
-    This environment has no terminal state.
+    An episode is terminated once all rewards have been gathered by the agent.
+    In the test phase, the episode is also terminated when the number of 50 steps has been reached.
 
     ### Arguments
 
@@ -55,8 +57,11 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         "render_fps": 1,
     }
 
-    def __init__(self, render_mode: Optional[str] = None):
+    def __init__(self, rng=np.random.RandomState(123456), render_mode: Optional[str] = None):
+        self._random_state = rng
         self._size_maze = 8
+        self._n_walls = int((self._size_maze-2)**2/3.)
+        self._n_rewards = 3
         self.create_map()
 
         self.action_space = spaces.Discrete(4)
@@ -73,17 +78,51 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.state = None
 
     def create_map(self):
-        self._map = np.zeros((self._size_maze, self._size_maze))
-        self._map[0,:] = 1
-        self._map[-1,:] = 1
-        self._map[:,0] = 1
-        self._map[:,-1] = 1
+        valid_map = False
+        while valid_map == False:
+            # Agent
+            self._pos_agent = [1,1]
 
-        self._map[:,self._size_maze//2] = 1
-        self._map[self._size_maze//2,self._size_maze//2] = 0
+            # Walls
+            self._pos_walls = []
+            for i in range(self._size_maze):
+                self._pos_walls.append([i,0])
+                self._pos_walls.append([i,self._size_maze-1])
+            for j in range(self._size_maze - 2):
+                self._pos_walls.append([0,j+1])
+                self._pos_walls.append([self._size_maze-1,j+1])
+            
+            n = 0
+            while n < self._n_walls:
+                potential_wall = [self._random_state.randint(1, self._size_maze - 2), self._random_state.randint(1, self._size_maze - 2)]
+                if potential_wall not in self._pos_walls and potential_wall != self._pos_agent:
+                    self._pos_walls.append(potential_wall)
+                    n += 1
+            
+            # Rewards
+            #self._pos_rewards=[[self._size_maze-2,self._size_maze-2]]
+            self._pos_rewards = []
+            n = 0
+            while n < self._n_rewards:
+                potential_reward = [self._random_state.randint(1, self._size_maze - 1), self._random_state.randint(1, self._size_maze - 1)]
+                if potential_reward not in self._pos_rewards and potential_reward not in self._pos_walls and potential_reward != self._pos_agent:
+                    self._pos_rewards.append(potential_reward)
+                    n += 1
+            
+            valid_map = self.is_valid_map(self._pos_agent, self._pos_walls, self._pos_rewards)
 
-        self._pos_agent = [2,2]
-        self._pos_goal = [self._size_maze-2, self._size_maze-2]
+    def is_valid_map(self, pos_agent, pos_walls, pos_rewards):
+        a = AStar()
+        walls = [tuple(w) for w in pos_walls]
+        start = tuple(pos_agent)
+        for r in pos_rewards:
+            end = tuple(r)
+            a.init_grid(self._size_maze, self._size_maze, walls, start, end)
+            maze = a
+            optimal_path = maze.solve()
+            if optimal_path == None:
+                return False
+        return True
 
     def reset(
         self,
@@ -95,8 +134,6 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         super().reset(seed=seed)
 
         self.create_map()
-
-        self._pos_agent = [2,2]
 
         self.state = self.observe()
         
@@ -113,59 +150,77 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.act(action)        
         self.state = self.observe()
 
-        done = False
-        reward = 0
-        
+        reward = -0.1
+        if self._pos_agent in self._pos_rewards:
+            reward = 1
+            self._pos_rewards.remove(self._pos_agent)
+        done = True if self.inTerminalState() else False
+
         return np.array(self.state, dtype=np.float32), reward, done, {}
+
+    def inTerminalState(self):
+        if self._pos_rewards == []:
+            return True
+        else:
+            return False
 
     def act(self, action):
         self._cur_action = action
         if action == 0:
-            if self._map[self._pos_agent[0]-1,self._pos_agent[1]] == 0:
+            if([self._pos_agent[0]-1,self._pos_agent[1]] not in self._pos_walls):
                 self._pos_agent[0] = self._pos_agent[0] - 1
         elif action == 1:
-            if self._map[self._pos_agent[0]+1,self._pos_agent[1]] == 0:
+            if([self._pos_agent[0]+1,self._pos_agent[1]] not in self._pos_walls):
                 self._pos_agent[0] = self._pos_agent[0] + 1
         elif action == 2:
-            if self._map[self._pos_agent[0],self._pos_agent[1]-1] == 0:
+            if([self._pos_agent[0],self._pos_agent[1]-1] not in self._pos_walls):
                 self._pos_agent[1] = self._pos_agent[1] - 1
         elif action == 3:
-            if self._map[self._pos_agent[0],self._pos_agent[1]+1] == 0:
+            if([self._pos_agent[0],self._pos_agent[1]+1] not in self._pos_walls):
                 self._pos_agent[1] = self._pos_agent[1] + 1
 
     def observe(self):
-        obs = copy.deepcopy(self._map)
+        self._map = np.zeros((self._size_maze, self._size_maze))
+        for x, y in self._pos_walls:
+            self._map[x, y] = 1
+        for x, y in self._pos_rewards:
+            self._map[x, y] = 2
+        self._map[self._pos_agent[0], self._pos_agent[1]] = 0.5
 
-        obs = obs / 1.
-        obs = np.repeat(np.repeat(obs, 6, axis=0), 6, axis=1)
+        indices_reward = np.argwhere(self._map == 2)
+        indices_agent = np.argwhere(self._map == 0.5)
+        self._map = self._map / 1.
+        self._map = np.repeat(np.repeat(self._map, 6, axis=0), 6, axis=1)
 
         # agent repr
         agent_obs = np.zeros((6,6))
-        agent_obs[0,2] = 0.7
-        agent_obs[1,0:5] = 0.8
-        agent_obs[2,1:4] = 0.8
-        agent_obs[3,1:4] = 0.8
-        agent_obs[4,1] = 0.8
-        agent_obs[4,3] = 0.8
-        agent_obs[5,0:2] = 0.8
-        agent_obs[5,3:5] = 0.8
+        agent_obs[0,2] = 0.8
+        agent_obs[1,0:5] = 0.9
+        agent_obs[2,1:4] = 0.9
+        agent_obs[3,1:4] = 0.9
+        agent_obs[4,1] = 0.9
+        agent_obs[4,3] = 0.9
+        agent_obs[5,0:2] = 0.9
+        agent_obs[5,3:5] = 0.9
         
         # reward repr
         reward_obs = np.zeros((6,6))
-        #reward_obs[:,1] = 0.8
-        #reward_obs[0,1:4] = 0.7
-        #reward_obs[1,3] = 0.8
-        #reward_obs[2,1:4] = 0.7
-        #reward_obs[4,2] = 0.8
-        #reward_obs[5,2:4] = 0.8
+        reward_obs[:,1] = 0.7
+        reward_obs[0,1:4] = 0.6
+        reward_obs[1,3] = 0.7
+        reward_obs[2,1:4] = 0.6
+        reward_obs[4,2] = 0.7
+        reward_obs[5,2:4] = 0.7
 
-        i = self._pos_goal
-        obs[i[0]*6:(i[0]+1)*6:,i[1]*6:(i[1]+1)*6] = reward_obs
+        for i in indices_reward:
+            self._map[i[0]*6:(i[0]+1)*6:,i[1]*6:(i[1]+1)*6] = reward_obs
 
-        i = self._pos_agent
-        obs[i[0]*6:(i[0]+1)*6:,i[1]*6:(i[1]+1)*6] = agent_obs
-            
-        return obs
+        for i in indices_agent:
+            self._map[i[0]*6:(i[0]+1)*6:,i[1]*6:(i[1]+1)*6] = agent_obs
+        
+        self._map = (self._map*2) - 1
+
+        return self._map
 
     def render(self, mode="human"):
         if self.render_mode is not None:
@@ -201,8 +256,14 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.surf = pygame.Surface((self._size_maze*6, self._size_maze*6))
         self.surf.fill((255, 255, 255))
         
-        for x, y in np.transpose(self.state.nonzero()):
+        for x, y in np.argwhere(self.state == 1):
             gfxdraw.pixel(self.surf, x, y, (0, 0, 0))
+
+        for x, y in np.argwhere((self.state > 0.5) & (self.state < 1.0)):
+            gfxdraw.pixel(self.surf, x, y, (0, 0, 0))
+
+        for x, y in np.argwhere((self.state > 0.0) & (self.state < 0.5)):
+            gfxdraw.pixel(self.surf, x, y, (255, 180, 0))
 
         self.surf = pygame.transform.scale(self.surf, (self.screen_width, self.screen_height))
         self.surf = pygame.transform.rotate(self.surf, 90)
