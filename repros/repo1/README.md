@@ -1,9 +1,15 @@
 
+### Repo1 
 
- 
-python3 train.py 
+Reproducing 
 
-새로운 모델 학습 
 
-`python plot.py`
-학습된 모델 Rollout 및 시각화
+```bash 
+
+# Environment Test
+bash evn_simple_maze_gui.sh
+
+# Train 
+bash train.sh
+
+```
