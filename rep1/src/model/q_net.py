@@ -1,0 +1,2 @@
+class QNet():
+    pass 
