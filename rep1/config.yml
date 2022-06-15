@@ -2,7 +2,7 @@
 
 
 # Action 
-random_action : true
+random_action : false
 discount_factor : 0.999
 abstract_dim : 2
 buffer_len : 1000
@@ -17,7 +17,7 @@ learning_rate : 1e-4
 weight_decay : 0.01
 beta : 0.20
 epsilon_init : 0.9
-epsilon_final : 0.9
+epsilon_final : 0.1
 
 # Utils
 log_freq : 100

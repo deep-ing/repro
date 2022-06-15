@@ -11,7 +11,7 @@ from utils.losses import (
     compute_transition_loss
 )
 class CRAR():
-    def __init__(self, observation_space, action_space, flags):
+    def __init__(self, observation_space, action_space, flags, logger):
         self.observation_space = observation_space
         self.action_space = action_space
         self.flags = flags
@@ -19,6 +19,7 @@ class CRAR():
         self.discount_factor = self.flags.discount_factor
         self.abstract_dim = self.flags.abstract_dim 
         self.epsilon = self.flags.epsilon_init
+        self.logger = logger
         
         self.encoder =  Encoder(self.abstract_dim).to(flags.device)
         self.q_net =  nn.Linear(self.abstract_dim, action_space.n).to(flags.device)
@@ -39,10 +40,10 @@ class CRAR():
 
         self.update_target() 
     
-    def learn(self, batch, random_batch_1, random_batch_2):
+    def learn(self, batch):
         states, actions, rewards, dones, next_states = batch
-        random_states1, _, _, _, _ = random_batch_1
-        random_states2, _, _, _, _ = random_batch_2
+        random_states1 = states
+        random_states2 = states.roll()
         encoded_states = self.encoder(states)
         encoded_next_states = self.encoder(next_states)
         encoded_random_states1 = self.encoder(random_states1)
@@ -70,6 +71,16 @@ class CRAR():
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        self.logger.log_agent({
+            "mf_loss" : mf_loss.item(),
+            "reward_loss" : reward_loss.item(),
+            "transition_loss" : transition_loss.item(),
+            "ld1_loss" : ld1_loss.item(),
+            "ld1_prime_loss" : ld1_prime_loss.item(),
+            "ld2_loss" : ld2_loss.item(),
+            "ld_loss" : ld_loss.item(),
+            "total_loss" : loss.item(),
+        })
     
     def act(self, obs):
         if self.flags.random_action:  
@@ -83,4 +94,4 @@ class CRAR():
 
     def anneal_epsilon(self):
         self.epsilon *= 0.99
-        self.epsilon = max(self.epsilon, self.flags.epsilon_min)
+        self.epsilon = max(self.epsilon, self.flags.epsilon_final)

@@ -29,7 +29,7 @@ if not os.path.isdir(RESULT_path):
 
 OmegaConf.save(config=flags, f=os.path.join(RESULT_path, "config.yaml"))
 logger = PlatformLogger(RESULT_path)
-agent = CRAR(envs[0].observation_space, envs[0].action_space, flags)
+agent = CRAR(envs[0].observation_space, envs[0].action_space, flags, logger=logger)
 
 timestep = 0 
 episode_count = 0 
@@ -38,10 +38,8 @@ while timestep < flags.timesteps:
     timestep +=1 
     if len(buffer) >= flags.batch_size:
         env_batch = buffer.sample(flags.batch_size, flags.device)
-        random_batch1 = buffer.sample(flags.batch_size, flags.device)
-        random_batch2 = buffer.sample(flags.batch_size, flags.device)
         
-        agent.learn(env_batch, random_batch1, random_batch2)
+        agent.learn(env_batch)
         epsiode_return_mean = 0 if episode_count==0  else sum_return / episode_count
         
         if timestep % flags.log_freq  == 0:
