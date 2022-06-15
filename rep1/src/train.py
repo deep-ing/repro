@@ -42,8 +42,8 @@ while timestep < flags.timesteps:
         epsiode_return_mean = 0 if episode_count==0  else sum_return / episode_count
         
         if timestep % flags.log_freq  == 0:
-            info_dict = {"episode_return_mean" : f"{epsiode_return_mean:.3f}"
-                        ,"epsilon" : f"{agent.epsilon:.3f}"}
+            info_dict = {"episode_return_mean" : float(epsiode_return_mean),
+                         "epsilon" : float(agent.epsilon)}
             logger.log_iteration(info_dict)
         if timestep % flags.target_update_freq == 0:
             agent.update_target()

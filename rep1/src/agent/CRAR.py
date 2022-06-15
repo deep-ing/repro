@@ -51,7 +51,7 @@ class CRAR():
         encoded_states  = self.encoder(states)
         encoded_next_states = self.encoder(next_states)
         encoded_random_states1 =  encoded_states                 # self.encoder(random_states1)
-        encoded_random_states2 =  encoded_states.clone().detach().roll(1, dims=0) # self.encoder(random_states2)
+        encoded_random_states2 =  encoded_states.roll(1, dims=0) # self.encoder(random_states2)
         # Q Values 
         q_values = self.q_net.forward(encoded_states).gather(-1, (actions.to(torch.int64)))
         next_q_values = self.q_target_net.forward(encoded_next_states).detach().max(dim=-1)[0].unsqueeze(-1)
