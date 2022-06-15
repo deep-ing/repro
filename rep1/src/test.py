@@ -3,9 +3,14 @@ import numpy as np
 def test_agent():
     from envs import SimpleMazeEnv
     from envs import MazeEnv
+    from envs import CatcherEnv
 
-    env_map = {1: SimpleMazeEnv, 2: MazeEnv}
-    user_input = int(input("====================\nChoose env (type the number):\n1) Simple Maze\n2) Maze\n====================\n>> "))
+    env_map = {1: SimpleMazeEnv, 2: MazeEnv, 3: CatcherEnv}
+    user_input = int(input("====================\nChoose env (type the number):\n\
+1) Simple Maze\n\
+2) Maze\n\
+3) Catcher\n\
+====================\n>> "))
     try:
         env = env_map[user_input](rng=np.random.RandomState(0), render_mode='rgb_array')
     except:

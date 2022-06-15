@@ -31,7 +31,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
     ### Observation Space
 
-    The observation is a `ndarray` with shape `(8,8)` with the values corresponding to the 2D map.
+    The observation is a `ndarray` with shape `(48,48)` with the values corresponding to the 2D map.
 
     ### Rewards
 

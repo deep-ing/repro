@@ -1,9 +1,14 @@
 def test_humanplay():
     from src.envs import SimpleMazeEnv
     from src.envs import MazeEnv
+    from src.envs import CatcherEnv
 
-    env_map = {1: SimpleMazeEnv, 2: MazeEnv}
-    user_input = int(input("====================\nChoose env (type the number):\n1) Simple Maze\n2) Maze\n====================\n>> "))
+    env_map = {1: SimpleMazeEnv, 2: MazeEnv, 3: CatcherEnv}
+    user_input = int(input("====================\nChoose env (type the number):\n\
+1) Simple Maze\n\
+2) Maze\n\
+3) Catcher\n\
+====================\n>> "))
     env = env_map[user_input]()
 
     env.reset()

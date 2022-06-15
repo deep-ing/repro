@@ -2,7 +2,6 @@
 A labyrinth environment reproduced by Cheongwoong Kang.
 reference: https://arxiv.org/pdf/1809.04506.pdf
 """
-import copy
 from .a_star_path_finding import AStar
 from typing import Optional, Union
 
@@ -32,7 +31,7 @@ class MazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
     ### Observation Space
 
-    The observation is a `ndarray` with shape `(8,8)` with the values corresponding to the 2D map.
+    The observation is a `ndarray` with shape `(48,48)` with the values corresponding to the 2D map.
 
     ### Rewards
 
