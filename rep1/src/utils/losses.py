@@ -12,6 +12,7 @@ DISAMBIGUATION = lambda t1, t2, cd=5.0 : \
 
 def compute_model_free_loss(state_action_values, next_state_values, rewards, gamma):
     assert state_action_values.size()[1:] ==  next_state_values.size()[1:]
+    assert state_action_values.size()[1:] ==  rewards.size()[1:]
     expected_state_action_values = rewards + next_state_values * gamma
     return MSELOSS(state_action_values, expected_state_action_values)
 

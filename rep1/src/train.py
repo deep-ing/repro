@@ -38,7 +38,6 @@ while timestep < flags.timesteps:
     timestep +=1 
     if len(buffer) >= flags.batch_size:
         env_batch = buffer.sample(flags.batch_size, flags.device)
-        
         agent.learn(env_batch)
         epsiode_return_mean = 0 if episode_count==0  else sum_return / episode_count
         
@@ -52,7 +51,7 @@ while timestep < flags.timesteps:
     
     # Run Environments
     envs_states = [envs_states[i] if not envs_dones[i] else envs[i].reset() for i in range(len(envs_states))]
-    actions = [agent.act(torch.tensor(state, device=flags.device).unsqueeze(0)) for state in envs_states]
+    actions = [agent.act(obs_preprocessing(torch.tensor(state, device=flags.device)).unsqueeze(0)) for state in envs_states]
     steps = [envs[i].step(actions[i]) for i in range(len(envs))]
     for i, (ns, r, done, info) in enumerate(steps):
         buffer.append({k:v for k,v in zip(['state', 'action', 'reward',  'done', 'next_state'], 
