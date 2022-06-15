@@ -63,10 +63,7 @@ class RolloutBuffer:
         batch_dict = []
         for v in self.values_to_stroe:
             try:
-                # if torch.is_tensor(self[v][0]):
                 batch_dict.append(torch.stack([self[v][i] for i in indices]).to(device))
-                # else:
-                #     batch_dict[v] =  np.stack([self[v][i] for i in indices])
             except:
                 print(v, self[v][0])    
         return batch_dict
