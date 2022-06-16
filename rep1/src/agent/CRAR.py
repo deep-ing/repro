@@ -1,6 +1,5 @@
 import torch 
 import torch.nn as nn 
-from model.encoder import Encoder
 import numpy as np 
 from utils.losses import (
     compute_LD1_loss,
@@ -30,6 +29,7 @@ class CRAR(nn.Module):
         self.logger = logger
         
         self.encoder        = construct_nn_from_config(self.flags.encoder, 1, self.abstract_dim).to(flags.device)
+        self.encoder_target = construct_nn_from_config(self.flags.encoder, 1, self.abstract_dim).to(flags.device)
         self.q_net          = construct_nn_from_config(self.flags.q_net,   self.abstract_dim, self.action_ouput_dim).to(flags.device)
         self.q_target_net   = construct_nn_from_config(self.flags.q_net,   self.abstract_dim, self.action_ouput_dim).to(flags.device)
         self.transition_net = construct_nn_from_config(self.flags.transition_net, self.abstract_dim+self.action_input_dim, self.abstract_dim).to(flags.device)
@@ -55,7 +55,7 @@ class CRAR(nn.Module):
         states, actions, rewards, dones, next_states = batch
         # random_states2 = states
         encoded_states  = self.encoder(states)
-        encoded_next_states = self.encoder(next_states)
+        encoded_next_states = self.encoder_target(next_states)
         encoded_random_states1 =  encoded_states                 # self.encoder(random_states1)
         encoded_random_states2 =  encoded_states.roll(1, dims=0) # self.encoder(random_states2)
         # Q Values 
@@ -106,6 +106,7 @@ class CRAR(nn.Module):
     
     def update_target(self):
         self.q_target_net.load_state_dict(self.q_net.state_dict())
+        self.encoder_target.load_state_dict(self.encoder.state_dict())
 
     def anneal_epsilon(self, timestep):
         self.epsilon = (self.epsilon_max_timesteps - timestep)/self.epsilon_max_timesteps
