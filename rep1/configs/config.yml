@@ -1,13 +1,13 @@
 # Action 
 random_action : true
 discount_factor : 0.9
-abstract_dim : 3
+abstract_dim : 2
 buffer_len : 100000
 batch_size : 32
 device : "cuda:0"
 
 # Training Config
-env : catcher
+env : simple_maze
 n_envs : 1
 timesteps : 1e5
 train_start_timestep : 1e4
