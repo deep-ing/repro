@@ -2,13 +2,13 @@
 random_action : true
 discount_factor : 0.9
 abstract_dim : 2
-buffer_len : 1000000
+buffer_len : 100000
 batch_size : 32
 device : "cuda:0"
 
 # Training Config
 env : maze
-n_envs : 4
+n_envs : 1
 timesteps : 1e5
 target_update_freq : 1000
 learning_rate : 0.0005
@@ -28,6 +28,12 @@ epsilon_max_timesteps : 1e5
 # Utils
 log_freq : 100
 checkpoint_num : 10
+
+# Test 
+eval_freq : 10000
+test_epsilon : 0.1
+test_horizon : 100
+test_episodes : 32
 
 # --- Network Candidates ----
 act: &act Tanh

@@ -14,6 +14,7 @@ def eval(env_class, agent, flags, logger, obs_preprocessing):
 
     agent_eps = agent.epsilon 
     agent.epsilon = flags.test_epsilon 
+    flags.random_action = False
     rewards = [0 for i in range(flags.test_episodes)]
     for i in range(flags.test_episodes):    
         done = False 
@@ -33,7 +34,8 @@ def eval(env_class, agent, flags, logger, obs_preprocessing):
         "return_var" : float(np.var(rewards))
     }
     logger.log_eval(info_dict)
-    agent.epsilon = agent_eps 
+    agent.epsilon = agent_eps
+    flags.random_action = True
     
 def train(env_class, agent, flags, logger):
     obs_preprocessing = lambda x : x.unsqueeze(0)
