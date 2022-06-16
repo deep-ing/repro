@@ -26,6 +26,7 @@ class CRAR():
         self.discount_factor = self.flags.discount_factor
         self.abstract_dim = self.flags.abstract_dim 
         self.epsilon = self.flags.epsilon_init
+        self.epsilon_max_timesteps = self.flags.epsilon_max_timesteps
         self.logger = logger
         
         self.encoder        = construct_nn_from_config(self.flags.encoder, 1, self.abstract_dim).to(flags.device)
@@ -103,7 +104,7 @@ class CRAR():
     def update_target(self):
         self.q_target_net.load_state_dict(self.q_net.state_dict())
 
-    def anneal_epsilon(self):
-        self.epsilon *= 0.99
-        self.epsilon = max(self.epsilon, self.flags.epsilon_final)
+    def anneal_epsilon(self, timestep):
+        self.epsilon = (self.epsilon_max_timesteps - timestep)/self.epsilon_max_timesteps
+        self.epsilon = min(self.flags.epsilon_init, max(self.epsilon, self.flags.epsilon_final))
         

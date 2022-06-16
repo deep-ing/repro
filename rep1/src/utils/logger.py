@@ -32,6 +32,9 @@ class PlatformLogger():
             if isinstance(v, float):
                 lst.append(f"{k}:{v:.3f}")
                 self.writer.add_scalar(f'Environment/{k}', v, self.iteration_log_count)
+            elif isinstance(v, int):
+                lst.append(f"{k}:{v}")
+                self.writer.add_scalar(f'Environment/{k}', v, self.iteration_log_count)
             else:
                 lst.append(f"{k}:{v}")
             
@@ -48,7 +51,9 @@ class PlatformLogger():
             if isinstance(v, float):
                 lst.append(f"{k}:{v:.3f}")
                 self.writer.add_scalar(f'Train/{k}', v,self.agent_log_count)
-                
+            elif isinstance(v, int):
+                lst.append(f"{k}:{v}")
+                self.writer.add_scalar(f'Environment/{k}', v, self.iteration_log_count)
             else:
                 lst.append(f"{k}:{v}")
         string = f"{str(self.agent_log_count)} | " + "".join(" | ".join(lst))
