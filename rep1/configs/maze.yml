@@ -1,0 +1,84 @@
+
+
+
+# Action 
+random_action : false
+discount_factor : 0.99
+abstract_dim : 2
+buffer_len : 10000
+batch_size : 32
+device : "cuda:0"
+
+# Training Config
+env : maze
+n_envs : 4
+timesteps : 1e6
+target_update_freq : 1e4
+learning_rate : 1e-4
+weight_decay : 0
+horizon : 100
+
+# Loss Magnitude
+beta : 0.20
+ld_lambda : 0.0
+model_lambda : 0.0
+
+# Exploration
+epsilon_init : 0.9
+epsilon_final : 0.1
+epsilon_max_timesteps : 1e5
+
+# Utils
+log_freq : 100
+checkpoint_num : 4 
+
+# --- Network Candidates ----
+act: &act Tanh
+crar_convs: &crar_convs
+  - [Conv2d, auto, 8, { kernel_size: 2, stride: 1, padding: 1}]
+  - *act
+  - [Conv2d, 8, 16, { kernel_size: 2, stride: 1, padding: 1}]
+  - *act
+  - [MaxPool2d, { kernel_size: 2 }]
+  - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: 1}]
+  - *act
+  - [MaxPool2d, { kernel_size: 3 }]
+  - [Flatten, { }]
+  - [Linear, 2048, auto, {}]
+
+slim_fc : &slim_fc
+  - [Linear, "auto", 32, {}]
+  - *act
+  - [Linear, 32, "auto", {}]
+
+# --- Models ---
+encoder: *crar_convs
+q_net:
+  - [Linear, auto, 20, {}]
+  - *act
+  - [Linear, 20, 50, {}]
+  - *act
+  - [Linear, 50, 20, {}]
+  - *act
+  - [Linear, 20, auto, {}]
+
+transition_net: 
+  - [Linear, auto, 10, {}]
+  - *act
+  - [Linear, 10, 30, {}]
+  - *act
+  - [Linear, 30, 10, {}]
+  - *act
+  - [Linear, 10, auto, {}]
+
+reward_net:
+  - [Linear, auto, 10, {}]
+  - *act
+  - [Linear, 10, 50, {}]
+  - *act
+  - [Linear, 50, 20, {}]
+  - *act
+  - [Linear, 20, auto, {}]
+
+discount_net: *slim_fc
+

@@ -12,9 +12,9 @@ from utils.losses import (
 )
 from utils.construct_model import construct_nn_from_config
 
-class CRAR():
+class CRAR(nn.Module):
     def __init__(self, observation_space, action_space, flags, logger):
-        # super(CRAR, self).__init__()
+        super(CRAR, self).__init__()
         self.observation_space = observation_space
         self.action_space = action_space
         self.action_input_dim = 1
@@ -26,6 +26,7 @@ class CRAR():
         self.discount_factor = self.flags.discount_factor
         self.abstract_dim = self.flags.abstract_dim 
         self.epsilon = self.flags.epsilon_init
+        self.epsilon_max_timesteps = self.flags.epsilon_max_timesteps
         self.logger = logger
         
         self.encoder        = construct_nn_from_config(self.flags.encoder, 1, self.abstract_dim).to(flags.device)
@@ -92,7 +93,7 @@ class CRAR():
     def act(self, obs):
         if self.flags.random_action:  
             return self.action_space.sample()
-        if self.epsilon > np.random.random():
+        if self.epsilon < np.random.random():
             with torch.no_grad():    
                 obs = self.encoder(obs)
                 action = self.q_net(obs).argmax(1).item()                
@@ -103,7 +104,23 @@ class CRAR():
     def update_target(self):
         self.q_target_net.load_state_dict(self.q_net.state_dict())
 
-    def anneal_epsilon(self):
-        self.epsilon *= 0.99
-        self.epsilon = max(self.epsilon, self.flags.epsilon_final)
+    def anneal_epsilon(self, timestep):
+        self.epsilon = (self.epsilon_max_timesteps - timestep)/self.epsilon_max_timesteps
+        self.epsilon = min(self.flags.epsilon_init, max(self.epsilon, self.flags.epsilon_final))
         
+    def save(self, path):
+        model_state_dicts = []
+        model_state_dicts.append(self.encoder.state_dict())
+        model_state_dicts.append(self.q_net.state_dict())
+        model_state_dicts.append(self.reward_net.state_dict())
+        model_state_dicts.append(self.discount_net.state_dict())
+        model_state_dicts.append(self.transition_net.state_dict())
+        torch.save(model_state_dicts, path)
+        
+    def load(self, path):
+        model_state_dicts = torch.load(path)
+        self.encoder.load_state_dict(model_state_dicts[0])
+        self.q_net.load_state_dict(model_state_dicts[1])
+        self.reward_net.load_state_dict(model_state_dicts[2])
+        self.discount_net.load_state_dict(model_state_dicts[3])
+        self.transition_net.load_state_dict(model_state_dicts[4])
