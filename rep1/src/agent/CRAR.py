@@ -42,9 +42,11 @@ class CRAR(nn.Module):
                + list(self.reward_net.parameters()) \
                + list(self.discount_net.parameters())
                    
-        self.optimizer = torch.optim.Adam(params, lr=self.flags.learning_rate, 
-                                          weight_decay=self.flags.weight_decay) 
-
+        # self.optimizer = torch.optim.Adam(params, lr=self.flags.learning_rate, 
+        #                                   weight_decay=self.flags.weight_decay) 
+    
+        self.optimizer = torch.optim.RMSprop(params, lr=self.flags.learning_rate, 
+                                        weight_decay=self.flags.weight_decay) 
 
         self.update_target() 
     

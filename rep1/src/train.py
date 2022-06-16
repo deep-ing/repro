@@ -34,7 +34,7 @@ def train(env_class, agent, flags, logger):
             
             if timestep % flags.log_freq  == 0:
                 agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
-                agent.load(os.path.join(logger.result_path, f"checkpoint.tar"))
+                # agent.load(os.path.join(logger.result_path, f"checkpoint.tar"))
                 
                 info_dict = {
                     "timestep": float(timestep),
@@ -57,7 +57,7 @@ def train(env_class, agent, flags, logger):
         agent.anneal_epsilon(timestep)
         if timestep > time_to_checkpoint:
             agent.save(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
-            agent.load(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
+            # agent.load(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
             time_to_checkpoint += checkpoint_timestep
         
         # Run Environments
