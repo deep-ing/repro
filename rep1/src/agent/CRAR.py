@@ -22,6 +22,7 @@ class CRAR():
         self.flags = flags
         self.beta = self.flags.beta 
         self.ld_lambda = self.flags.ld_lambda
+        self.model_lambda = self.flags.model_lambda
         self.discount_factor = self.flags.discount_factor
         self.abstract_dim = self.flags.abstract_dim 
         self.epsilon = self.flags.epsilon_init
@@ -71,8 +72,8 @@ class CRAR():
         ld1_loss        = compute_LD1_loss(encoded_random_states1, encoded_random_states2) 
         ld1_prime_loss  = compute_LD1_prime_loss(encoded_states, encoded_next_states) 
         ld2_loss        = compute_LD2_loss(encoded_states)
-        ld_loss = ld1_loss + self.beta * ld1_prime_loss + self.ld_lambda  * ld2_loss
-        loss =  mf_loss + reward_loss + transition_loss + ld_loss
+        ld_loss = ld1_loss + self.beta * ld1_prime_loss + ld2_loss
+        loss =  mf_loss + self.model_lambda * (reward_loss + transition_loss) + self.ld_lambda * ld_loss
         
         self.optimizer.zero_grad()
         loss.backward()
@@ -91,9 +92,12 @@ class CRAR():
     def act(self, obs):
         if self.flags.random_action:  
             return self.action_space.sample()
-        with torch.no_grad():
-            obs = self.encoder(obs)
-            action = self.q_net(obs).argmax(1).item()
+        if self.epsilon > np.random.random():
+            with torch.no_grad():    
+                obs = self.encoder(obs)
+                action = self.q_net(obs).argmax(1).item()                
+        else:
+            action = self.action_space.sample()    
         return action 
     
     def update_target(self):

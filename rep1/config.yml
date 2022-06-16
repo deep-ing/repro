@@ -13,11 +13,12 @@ device : "cuda:0"
 env : maze
 n_envs : 4
 timesteps : 1e6
-target_update_freq : 1000
+target_update_freq : 10000
 learning_rate : 1e-4
 weight_decay : 0
 beta : 0.20
 ld_lambda : 0.0
+model_lambda : 0.0
 epsilon_init : 0.9
 epsilon_final : 0.1
 
