@@ -48,7 +48,7 @@ class CRAR(nn.Module):
     
         self.optimizer = torch.optim.RMSprop(self.params, lr=self.flags.learning_rate, 
                                                       weight_decay=self.flags.weight_decay) 
-
+        self.lr_schduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.flags.lr_decay)
         self.update_target() 
     
     def learn(self, batch):
