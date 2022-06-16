@@ -7,11 +7,15 @@ batch_size : 32
 device : "cuda:0"
 
 # Training Config
-env : maze
+env : simple_maze
 n_envs : 1
 timesteps : 1e5
+train_start_timestep : 1e4
+
 target_update_freq : 1000
 learning_rate : 0.0005
+lr_decay : 0.90
+lr_decay_freq : 2000
 weight_decay : 0
 horizon : 100
 

@@ -10,8 +10,12 @@ device : "cuda:0"
 env : catcher
 n_envs : 1
 timesteps : 1e5
+train_start_timestep : 1e4
+
 target_update_freq : 1000
 learning_rate : 0.0005
+lr_decay : 0.90
+lr_decay_freq : 2000
 weight_decay : 0
 horizon : 100
 
@@ -34,13 +38,6 @@ eval_freq : 10000
 test_epsilon : 0.1
 test_horizon : 100
 test_episodes : 32
-
-# Test 
-eval_freq : 10000
-test_epsilon : 0.1
-test_horizon : 100
-test_episodes : 32
-
 
 # --- Network Candidates ----
 act: &act Tanh
