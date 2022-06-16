@@ -8,7 +8,7 @@ import gym
 import datetime
 import torch 
 
-flags = OmegaConf.load("config.yml")
+flags = OmegaConf.load("configs/config.yml")
 output_dir = "results/"
 
 env_class = {
@@ -87,4 +87,5 @@ while timestep < flags.timesteps:
             returns.append(episode_reward[i])
             episode_steps.append(envs_timesteps[i])
             episode_reward[i] = 0
+            envs_timesteps[i] = 0
             
