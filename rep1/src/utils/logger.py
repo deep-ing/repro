@@ -19,9 +19,11 @@ def setup_logger(name, log_file, level=logging.INFO):
 
 class PlatformLogger():
     def __init__(self, result_path):
-        self.iteration_logger = setup_logger('iteration', os.path.join(result_path, "log_iteration.log"))
-        self.agent_logger = setup_logger('agent', os.path.join(result_path, "log_agent.log"))
-        self.info_logger = setup_logger("info", os.path.join(result_path, "log_info.log"))
+        self.result_path = result_path
+        os.makedirs(os.path.join(result_path, "logs"))
+        self.iteration_logger = setup_logger('iteration', os.path.join(result_path, "logs/log_iteration.log"))
+        self.agent_logger = setup_logger('agent', os.path.join(result_path, "logs/log_agent.log"))
+        self.info_logger = setup_logger("info", os.path.join(result_path, "logs/log_info.log"))
         self.iteration_log_count = 0 
         self.agent_log_count = 0
         self.writer = SummaryWriter(log_dir=os.path.join(result_path, 'runs'))          

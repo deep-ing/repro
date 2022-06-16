@@ -24,6 +24,8 @@ def train(env_class, agent, flags, logger):
     episode_steps = []
 
     target_update_count = 0
+    checkpoint_timestep = flags.timesteps // flags.checkpoint_num
+    time_to_checkpoint = checkpoint_timestep
     while timestep < flags.timesteps:
         timestep += flags.n_envs 
         if len(buffer) >= flags.batch_size:
@@ -31,6 +33,9 @@ def train(env_class, agent, flags, logger):
             agent.learn(env_batch)
             
             if timestep % flags.log_freq  == 0:
+                agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
+                agent.load(os.path.join(logger.result_path, f"checkpoint.tar"))
+                
                 info_dict = {
                     "timestep": float(timestep),
                     "target_update_count" : float(target_update_count),
@@ -44,11 +49,16 @@ def train(env_class, agent, flags, logger):
                     info_dict.update({"episode_steps_mean":sum(episode_steps) / len(episode_steps)})
                     episode_steps = []
                 logger.log_iteration(info_dict)
+                
             if timestep % flags.target_update_freq == 0:
                 agent.update_target()
                 target_update_count += 1
                 
         agent.anneal_epsilon(timestep)
+        if timestep > time_to_checkpoint:
+            agent.save(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
+            agent.load(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
+            time_to_checkpoint += checkpoint_timestep
         
         # Run Environments
         envs_states = [envs_states[i] if not envs_dones[i] else envs[i].reset() for i in range(len(envs_states))]

@@ -108,3 +108,19 @@ class CRAR(nn.Module):
         self.epsilon = (self.epsilon_max_timesteps - timestep)/self.epsilon_max_timesteps
         self.epsilon = min(self.flags.epsilon_init, max(self.epsilon, self.flags.epsilon_final))
         
+    def save(self, path):
+        model_state_dicts = []
+        model_state_dicts.append(self.encoder.state_dict())
+        model_state_dicts.append(self.q_net.state_dict())
+        model_state_dicts.append(self.reward_net.state_dict())
+        model_state_dicts.append(self.discount_net.state_dict())
+        model_state_dicts.append(self.transition_net.state_dict())
+        torch.save(model_state_dicts, path)
+        
+    def load(self, path):
+        model_state_dicts = torch.load(path)
+        self.encoder.load_state_dict(model_state_dicts[0])
+        self.q_net.load_state_dict(model_state_dicts[1])
+        self.reward_net.load_state_dict(model_state_dicts[2])
+        self.discount_net.load_state_dict(model_state_dicts[3])
+        self.transition_net.load_state_dict(model_state_dicts[4])
