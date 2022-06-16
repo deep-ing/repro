@@ -1,24 +1,30 @@
 # Action 
-random_action : true
+random_action : false
 discount_factor : 0.9
-abstract_dim : 2
-buffer_len : 100000
+abstract_dim : 10
+buffer_len : 10000
 batch_size : 32
 device : "cuda:0"
 
 # Training Config
 env : maze
 n_envs : 1
-timesteps : 1e5
-target_update_freq : 1000
+timesteps : 1e6
+train_start_timestep : 1e4
+learn_epoch : 1
+max_training_epoch : 100000
+
+target_update_freq : 10000
 learning_rate : 0.0005
+lr_decay : 0.90
+lr_decay_freq : 2000
 weight_decay : 0
 horizon : 100
 
 # Loss Magnitude
 beta : 0.20
-ld_lambda : 1.0
-model_lambda : 1.0
+ld_lambda : 0.0
+model_lambda : 0.0
 
 # Exploration
 epsilon_init : 0.9
