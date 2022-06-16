@@ -55,22 +55,16 @@ def train(env_class, agent, flags, logger):
 
 
     target_update_count = 0
-    train_count = 0
     checkpoint_timestep = flags.timesteps // flags.checkpoint_num
     time_to_checkpoint = checkpoint_timestep
     while timestep < flags.timesteps:
         timestep += flags.n_envs 
         if len(buffer) >= flags.batch_size and timestep > flags.train_start_timestep:
-            if train_count > flags.max_training_epoch:
-                break
-            train_count += 1
-            for j in range(flags.learn_epoch):
-                env_batch = buffer.sample(flags.batch_size, flags.device)
-                agent.learn(env_batch)
+            env_batch = buffer.sample(flags.batch_size, flags.device)
+            agent.learn(env_batch)
             
             if timestep % flags.log_freq  == 0:
                 agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
-                # agent.load(os.path.join(logger.result_path, f"checkpoint.tar"))
                 
                 info_dict = {
                     "timestep": float(timestep),
@@ -99,7 +93,6 @@ def train(env_class, agent, flags, logger):
         agent.anneal_epsilon(timestep)
         if timestep > time_to_checkpoint:
             agent.save(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
-            # agent.load(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
             time_to_checkpoint += checkpoint_timestep
         
         # Run Environments
@@ -123,7 +116,7 @@ def train(env_class, agent, flags, logger):
                 envs_timesteps[i] = 0
                 
 if __name__ == "__main__":
-    flags = OmegaConf.load("configs/config.yml")
+    flags = OmegaConf.load("configs/config_catcher.yml")
     date_now = datetime.datetime.now().__str__()
     level1 = datetime.datetime.now().strftime(format="%y-%m-%d")
     level2 = datetime.datetime.now().strftime(format="%H-%M-%S")

@@ -35,6 +35,13 @@ test_epsilon : 0.1
 test_horizon : 100
 test_episodes : 32
 
+# Test 
+eval_freq : 10000
+test_epsilon : 0.1
+test_horizon : 100
+test_episodes : 32
+
+
 # --- Network Candidates ----
 act: &act Tanh
 encoder_: &encoder_
