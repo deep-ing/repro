@@ -12,9 +12,9 @@ from utils.losses import (
 )
 from utils.construct_model import construct_nn_from_config
 
-class CRAR():
+class CRAR(nn.Module):
     def __init__(self, observation_space, action_space, flags, logger):
-        # super(CRAR, self).__init__()
+        super(CRAR, self).__init__()
         self.observation_space = observation_space
         self.action_space = action_space
         self.action_input_dim = 1
@@ -93,7 +93,7 @@ class CRAR():
     def act(self, obs):
         if self.flags.random_action:  
             return self.action_space.sample()
-        if self.epsilon > np.random.random():
+        if self.epsilon < np.random.random():
             with torch.no_grad():    
                 obs = self.encoder(obs)
                 action = self.q_net(obs).argmax(1).item()                
