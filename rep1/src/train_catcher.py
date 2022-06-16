@@ -122,11 +122,7 @@ def train(env_class, agent, flags, logger):
     
                 
 if __name__ == "__main__":
-<<<<<<< HEAD
     flags = OmegaConf.load("configs/config.yml")
-=======
-    flags = OmegaConf.load("configs/catcher.yml")
->>>>>>> 76d494abeef435ecd5e1c7122b561d0c97039502
     date_now = datetime.datetime.now().__str__()
     level1 = datetime.datetime.now().strftime(format="%y-%m-%d")
     level2 = datetime.datetime.now().strftime(format="%H-%M-%S")
