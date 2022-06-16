@@ -13,18 +13,18 @@ DISAMBIGUATION = lambda t1, t2, cd=5.0 : \
 def compute_model_free_loss(state_action_values, next_state_values, rewards, gamma):
     assert state_action_values.size()[1:] ==  next_state_values.size()[1:]
     assert state_action_values.size()[1:] ==  rewards.size()[1:]
-    expected_state_action_values = rewards + next_state_values * gamma
-    return MSELOSS(state_action_values, expected_state_action_values)
+    expected_state_action_values = rewards + gamma * next_state_values 
+    return nn.MSELoss()(state_action_values, expected_state_action_values)
 
 def compute_transition_loss(transition, encoded_next_states):
     assert transition.ndim == 2 # vector representation
     assert transition.size()[1:] == encoded_next_states.size()[1:]
-    return MSELOSS(transition, encoded_next_states)
+    return nn.MSELoss()(transition, encoded_next_states)
 
 def compute_reward_loss(reward_predictions, rewards):
     assert reward_predictions.ndim == 2 # vector representation
     assert reward_predictions.size()[1:] == rewards.size()[1:]
-    return MSELOSS(reward_predictions, rewards)
+    return nn.MSELoss()(reward_predictions, rewards)
 
 
 def compute_LD1_loss(encoded_random_states1, encoded_random_states2):

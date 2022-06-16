@@ -36,6 +36,7 @@ class CRAR(nn.Module):
         self.reward_net     = construct_nn_from_config(self.flags.reward_net,     self.abstract_dim+self.action_input_dim, 1).to(flags.device)
         self.discount_net   = construct_nn_from_config(self.flags.discount_net,   self.abstract_dim+self.action_input_dim, 1).to(flags.device)
         self.q_target_net.eval()
+        self.encoder_target.eval()
         
         self.params = list(self.q_net.parameters()) \
                + list(self.encoder.parameters()) \
