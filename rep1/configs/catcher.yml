@@ -4,24 +4,28 @@
 # Action 
 random_action : false
 discount_factor : 0.99
-abstract_dim : 2
+abstract_dim : 3
 buffer_len : 10000
 batch_size : 32
 device : "cuda:0"
 
 # Training Config
-env : maze
-n_envs : 4
+env : catcher
+n_envs : 1
 timesteps : 1e6
+train_start_timestep : 1e4
 target_update_freq : 1e4
 learning_rate : 1e-4
+lr_decay : 0.90
+lr_decay_freq : 2000
 weight_decay : 0
 horizon : 100
 
 # Loss Magnitude
 beta : 0.20
-ld_lambda : 0.0
-model_lambda : 0.0
+ld_lambda : 1.0
+model_lambda : 1.0
+inter_lambda : 1.0
 
 # Exploration
 epsilon_init : 0.9
@@ -51,7 +55,7 @@ crar_convs: &crar_convs
   - *act
   - [MaxPool2d, { kernel_size: 3 }]
   - [Flatten, { }]
-  - [Linear, 2048, auto, {}]
+  - [Linear, 1152, auto, {}]
 
 slim_fc : &slim_fc
   - [Linear, "auto", 32, {}]

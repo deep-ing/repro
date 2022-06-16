@@ -7,7 +7,8 @@ from utils.losses import (
     compute_LD2_loss,
     compute_model_free_loss,
     compute_reward_loss,
-    compute_transition_loss
+    compute_transition_loss,
+    compute_interpretable_loss
 )
 from utils.construct_model import construct_nn_from_config
 
@@ -22,11 +23,15 @@ class CRAR(nn.Module):
         self.beta = self.flags.beta 
         self.ld_lambda = self.flags.ld_lambda
         self.model_lambda = self.flags.model_lambda
+        self.inter_lambda = self.flags.inter_lambda
         self.discount_factor = self.flags.discount_factor
         self.abstract_dim = self.flags.abstract_dim 
         self.epsilon = self.flags.epsilon_init
         self.epsilon_max_timesteps = self.flags.epsilon_max_timesteps
         self.logger = logger
+        
+        self.dummy_zeros = torch.zeros(self.flags.batch_size, 1).to(self.flags.device)
+        self.dummy_ones  = torch.ones(self.flags.batch_size, 1).to(self.flags.device)
         
         self.encoder        = construct_nn_from_config(self.flags.encoder, 1, self.abstract_dim).to(flags.device)
         self.encoder_target = construct_nn_from_config(self.flags.encoder, 1, self.abstract_dim).to(flags.device)
@@ -78,7 +83,24 @@ class CRAR(nn.Module):
         ld1_prime_loss  = compute_LD1_prime_loss(encoded_states, encoded_next_states) 
         ld2_loss        = compute_LD2_loss(encoded_states)
         ld_loss = ld1_loss + self.beta * ld1_prime_loss + ld2_loss
-        loss =  mf_loss + self.model_lambda * (reward_loss + transition_loss) + self.ld_lambda * ld_loss
+        
+        if self.inter_lambda >0:
+            transition_pred_1 = self.transition_net(torch.cat((encoded_states, self.dummy_zeros ), 1))
+            transition_pred_2 = self.transition_net(torch.cat((encoded_states, self.dummy_ones), 1))
+            transition_pred_all = torch.cat((transition_pred_1.unsqueeze(1), transition_pred_2.unsqueeze(1)), dim=1)
+            interpretable_vector = torch.zeros((self.action_ouput_dim, self.abstract_dim)).to(self.flags.device)
+            interpretable_vector[0,0] = 1
+            interpretable_vector[1,0] = -1
+            interpretable_vector[0:2,1] = 1
+            interpretable_loss = compute_interpretable_loss(transition_pred_all ,interpretable_vector)
+        else:
+            interpretable_loss = torch.tensor([0.0])
+            
+        
+        loss =  mf_loss \
+                + self.model_lambda * (reward_loss + transition_loss) \
+                + self.ld_lambda * ld_loss \
+                + self.inter_lambda * interpretable_loss
         
         self.optimizer.zero_grad()
         loss.backward()
@@ -92,8 +114,9 @@ class CRAR(nn.Module):
             "ld2_loss" : ld2_loss.item(),
             "ld_loss" : ld_loss.item(),
             "total_loss" : loss.item(),
+            "interpretable_loss" : interpretable_loss.item()
         })
-    
+            
     def act(self, obs):
         if self.flags.random_action:  
             return self.action_space.sample()

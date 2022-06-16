@@ -47,6 +47,7 @@ def train(env_class, agent, flags, logger):
     envs_timesteps = [0 for i in range(flags.n_envs)]
 
     timestep = 0 
+    num_samples = 0
     episode_count = 0 
     returns = []
     episode_steps = []
@@ -56,7 +57,8 @@ def train(env_class, agent, flags, logger):
     checkpoint_timestep = flags.timesteps // flags.checkpoint_num
     time_to_checkpoint = checkpoint_timestep
     while timestep < flags.timesteps:
-        timestep += flags.n_envs 
+        num_samples += flags.n_envs 
+        timestep += 1
         if len(buffer) >= flags.batch_size and timestep > flags.train_start_timestep:
             env_batch = buffer.sample(flags.batch_size, flags.device)
             agent.learn(env_batch)
@@ -65,7 +67,7 @@ def train(env_class, agent, flags, logger):
                 agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
                 
                 info_dict = {
-                    "timestep": float(timestep),
+                    "num_samples": float(num_samples),
                     "target_update_count" : float(target_update_count),
                     "episode_count" : float(episode_count),
                     "epsilon" : float(agent.epsilon)
@@ -114,7 +116,7 @@ def train(env_class, agent, flags, logger):
                 envs_timesteps[i] = 0
                 
 if __name__ == "__main__":
-    flags = OmegaConf.load("configs/config_catcher.yml")
+    flags = OmegaConf.load("configs/catcher.yml")
     date_now = datetime.datetime.now().__str__()
     level1 = datetime.datetime.now().strftime(format="%y-%m-%d")
     level2 = datetime.datetime.now().strftime(format="%H-%M-%S")

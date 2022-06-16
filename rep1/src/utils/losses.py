@@ -41,3 +41,7 @@ def compute_LD1_prime_loss(encoded_states, encoded_next_states):
 
 def compute_LD2_loss(encoded_states):
     return torch.clamp(torch.max(torch.pow(encoded_states, 2))- 1.0, min=0.0, max=100.0)
+
+def compute_interpretable_loss(transition, interpretable_vector):
+    interpretable_vector = interpretable_vector.unsqueeze(0)
+    return -(nn.CosineSimilarity()(transition, interpretable_vector)).sum()
