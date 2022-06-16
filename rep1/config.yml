@@ -3,7 +3,7 @@
 
 # Action 
 random_action : true
-discount_factor : 0.999
+discount_factor : 0.9
 abstract_dim : 2
 buffer_len : 10000
 batch_size : 32
@@ -13,8 +13,8 @@ device : "cuda:0"
 env : maze
 n_envs : 4
 timesteps : 1e6
-target_update_freq : 10000
-learning_rate : 1e-4
+target_update_freq : 1
+learning_rate : 0.0005
 weight_decay : 0
 beta : 0.20
 ld_lambda : 0.0
@@ -29,37 +29,72 @@ checkpoint_freq :
 
 # --- Network Candidates ----
 act: &act Tanh
-crar_convs: &crar_convs
-  - [Conv2d, auto, 8, { kernel_size: 3, stride: 1, padding: 1}]
+encoder_: &encoder_
+  - [Conv2d, auto, 8, { kernel_size: 2, stride: 1, padding: same}]
   - *act
-  - [Conv2d, 8, 16, { kernel_size: 3, stride: 1, padding: 1}]
-  - *act
-  - [MaxPool2d, { kernel_size: 2 }]
-  - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: 1}]
+  - [Conv2d, 8, 16, { kernel_size: 2, stride: 1, padding: same}]
   - *act
   - [MaxPool2d, { kernel_size: 2 }]
+  - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: same}]
+  - *act
+  - [MaxPool2d, { kernel_size: 2 }]
+  - [Conv2d, 32, 2, { kernel_size: 1, stride: 1, padding: same}]
+
+q : &q
+  - [Conv2d, 2, 16, { kernel_size: 2, stride: 1, padding: same}]
+  - *act
+  - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: same}]
+  - *act
+  - [MaxPool2d, { kernel_size: 2 }]
+  - [Conv2d, 32, 16, { kernel_size: 2, stride: 1, padding: same}]
+  - *act
+  - [Conv2d, 16, 4, { kernel_size: 1, stride: 1, padding: same}]
+  - *act
   - [Flatten, { }]
-  - [Linear, 4608, auto, {}]
+  - [Linear, 6, 200, {}]
+  - *act
+  - [Linear, 200, 50, {}]
+  - *act
+  - [Linear, 50, 20, {}]
+  - *act
+  - [Linear, 20, 2, {}]
 
-deep_fc: &deep_fc
-  - [Linear, auto, 200, {}]
+transition: &transition
+  - [Conv2d, 2, 16, { kernel_size: 1, stride: 1, padding: same}]
   - *act
-  - [Linear, 200, 100, {}]
+  - [Conv2d, 16, 32, { kernel_size: 2, stride: 1, padding: same}]
   - *act
-  - [Linear, 100, 50, {}]
+  - [Conv2d, 32, 64, { kernel_size: 3, stride: 1, padding: same}]
   - *act
-  - [Linear, 50, auto, {}]
+  - [Conv2d, 64, 32, { kernel_size: 2, stride: 1, padding: same}]
+  - *act
+  - [Conv2d, 32, 16, { kernel_size: 1, stride: 1, padding: same}]
+  - *act
 
-slim_fc : &slim_fc
-  - [Linear, "auto", 32, {}]
+reward_gamma : &reward_gamma
+  - [Conv2d, 2, 16, { kernel_size: 2, stride: 1, padding: same}]
   - *act
-  - [Linear, 32, "auto", {}]
+  - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: same}]
+  - *act
+  - [MaxPool2d, { kernel_size: 2 }]
+  - [Conv2d, 32, 16, { kernel_size: 2, stride: 1, padding: same}]
+  - *act
+  - [Conv2d, 16, 4, { kernel_size: 1, stride: 1, padding: same}]
+  - *act
+  - [Flatten, { }]
+  - [Linear, 6, 200, {}]
+  - *act
+  - [Linear, 200, 50, {}]
+  - *act
+  - [Linear, 50, 20, {}]
+  - *act
+  - [Linear, 20, 1, {}]
 
 
 # --- Models ---
-encoder: *crar_convs
-q_net: *deep_fc
-transition_net: *deep_fc
-reward_net: *slim_fc
-discount_net: *slim_fc
+encoder: *encoder_
+q_net: *q
+transition_net: *transition
+reward_net: *reward_gamma
+discount_net: *reward_gamma
 

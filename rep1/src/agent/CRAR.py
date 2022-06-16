@@ -67,7 +67,7 @@ class CRAR():
         # --- compute the loss
         mf_loss         = compute_model_free_loss(q_values, next_q_values, rewards, self.discount_factor)        
         reward_loss     = compute_reward_loss(reward_pred, rewards) 
-        transition_loss = compute_transition_loss(transition_pred, encoded_states)
+        transition_loss = compute_transition_loss(transition_pred + encoded_states, encoded_next_states)
         # discount_loss   = compute_discount_loss()
         ld1_loss        = compute_LD1_loss(encoded_random_states1, encoded_random_states2) 
         ld1_prime_loss  = compute_LD1_prime_loss(encoded_states, encoded_next_states) 
