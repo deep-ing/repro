@@ -36,7 +36,7 @@ class CRAR(nn.Module):
         self.reward_net     = construct_nn_from_config(self.flags.reward_net,     self.abstract_dim+self.action_input_dim, 1).to(flags.device)
         self.discount_net   = construct_nn_from_config(self.flags.discount_net,   self.abstract_dim+self.action_input_dim, 1).to(flags.device)
         
-        params = list(self.q_net.parameters()) \
+        self.params = list(self.q_net.parameters()) \
                + list(self.encoder.parameters()) \
                + list(self.transition_net.parameters()) \
                + list(self.reward_net.parameters()) \
@@ -45,7 +45,7 @@ class CRAR(nn.Module):
         # self.optimizer = torch.optim.Adam(params, lr=self.flags.learning_rate, 
         #                                   weight_decay=self.flags.weight_decay) 
     
-        self.optimizer = torch.optim.RMSprop(params, lr=self.flags.learning_rate, 
+        self.optimizer = torch.optim.RMSprop(self.params, lr=self.flags.learning_rate, 
                                         weight_decay=self.flags.weight_decay) 
 
         self.update_target() 
@@ -100,7 +100,7 @@ class CRAR(nn.Module):
                 obs = self.encoder(obs)
                 action = self.q_net(obs).argmax(1).item()                
         else:
-            action = self.action_space.sample()    
+            action = self.action_space.sample()
         return action 
     
     def update_target(self):
