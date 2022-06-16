@@ -2,7 +2,7 @@
 
 
 # Action 
-random_action : false
+random_action : true
 discount_factor : 0.9
 abstract_dim : 2
 buffer_len : 10000
@@ -20,8 +20,8 @@ horizon : 100
 
 # Loss Magnitude
 beta : 0.20
-ld_lambda : 0.0
-model_lambda : 0.0
+ld_lambda : 1.0
+model_lambda : 1.0
 
 # Exploration
 epsilon_init : 0.9
