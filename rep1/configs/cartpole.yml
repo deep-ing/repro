@@ -10,13 +10,13 @@ batch_size : 32
 device : "cuda:0"
 
 # Training Config
-env : maze
-n_envs : 4
-timesteps : 1e6
+env : CartPole-v1 # maze
+n_envs : 1
+timesteps : 1e5
 target_update_freq : 1e4
-learning_rate : 1e-4
+learning_rate :  0.0002
 weight_decay : 0
-horizon : 100
+horizon : 50
 
 # Loss Magnitude
 beta : 0.20
@@ -26,12 +26,7 @@ model_lambda : 0.0
 # Exploration
 epsilon_init : 0.9
 epsilon_final : 0.1
-epsilon_max_timesteps : 1e5
-
-# Utils
-log_freq : 100
-checkpoint_num : 4 
-
+epsilon_max_timesteps : 5e4
 
 # Test 
 eval_freq : 1000
@@ -39,6 +34,10 @@ test_epsilon : 0.1
 test_horizon : 100
 test_episodes : 32
 
+
+# Utils
+log_freq : 100
+checkpoint_num : 4
 
 # --- Network Candidates ----
 act: &act Tanh
@@ -55,12 +54,12 @@ crar_convs: &crar_convs
   - [Linear, 2048, auto, {}]
 
 slim_fc : &slim_fc
-  - [Linear, "auto", 32, {}]
+  - [Linear, 4, 32, {}]
   - *act
   - [Linear, 32, "auto", {}]
 
 # --- Models ---
-encoder: *crar_convs
+encoder: *slim_fc # *crar_convs
 q_net:
   - [Linear, auto, 20, {}]
   - *act

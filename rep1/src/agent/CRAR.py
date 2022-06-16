@@ -35,6 +35,7 @@ class CRAR(nn.Module):
         self.transition_net = construct_nn_from_config(self.flags.transition_net, self.abstract_dim+self.action_input_dim, self.abstract_dim).to(flags.device)
         self.reward_net     = construct_nn_from_config(self.flags.reward_net,     self.abstract_dim+self.action_input_dim, 1).to(flags.device)
         self.discount_net   = construct_nn_from_config(self.flags.discount_net,   self.abstract_dim+self.action_input_dim, 1).to(flags.device)
+        self.q_target_net.eval()
         
         params = list(self.q_net.parameters()) \
                + list(self.encoder.parameters()) \
@@ -46,7 +47,7 @@ class CRAR(nn.Module):
         #                                   weight_decay=self.flags.weight_decay) 
     
         self.optimizer = torch.optim.RMSprop(params, lr=self.flags.learning_rate, 
-                                        weight_decay=self.flags.weight_decay) 
+                                                      weight_decay=self.flags.weight_decay) 
 
         self.update_target() 
     
@@ -65,7 +66,7 @@ class CRAR(nn.Module):
         assert actions.ndim==2, actions.ndim
         transition_pred = self.transition_net(torch.cat((encoded_states, actions), 1))
         reward_pred     = self.reward_net(torch.cat((encoded_states, actions), 1))
-        discount_pred   = self.discount_net(torch.cat((encoded_states, actions), 1))
+        # discount_pred   = self.discount_net(torch.cat((encoded_states, actions), 1))
 
         # --- compute the loss
         mf_loss         = compute_model_free_loss(q_values, next_q_values, rewards, self.discount_factor)        

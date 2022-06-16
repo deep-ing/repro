@@ -26,6 +26,7 @@ class PlatformLogger():
         self.info_logger = setup_logger("info", os.path.join(result_path, "logs/log_info.log"))
         self.iteration_log_count = 0 
         self.agent_log_count = 0
+        self.eval_log_count = 0
         self.writer = SummaryWriter(log_dir=os.path.join(result_path, 'runs'))          
 
     def log_iteration(self, dict):
@@ -55,10 +56,22 @@ class PlatformLogger():
                 self.writer.add_scalar(f'Train/{k}', v,self.agent_log_count)
             elif isinstance(v, int):
                 lst.append(f"{k}:{v}")
-                self.writer.add_scalar(f'Environment/{k}', v, self.iteration_log_count)
+                self.writer.add_scalar(f'Train/{k}', v, self.agent_log_count)
             else:
                 lst.append(f"{k}:{v}")
         string = f"{str(self.agent_log_count)} | " + "".join(" | ".join(lst))
         self.agent_logger.info(string)
         self.agent_log_count += 1
+
+
+    def log_eval(self, dict):
+        for  k,v in dict.items():
+            if isinstance(v, float):
+                self.writer.add_scalar(f'Eval/{k}', v,self.eval_log_count)
+            elif isinstance(v, int):
+                self.writer.add_scalar(f'Eval/{k}', v, self.eval_log_count)
+            else:
+                pass
+        self.eval_log_count += 1
+
 

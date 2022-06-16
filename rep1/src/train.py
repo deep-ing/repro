@@ -7,9 +7,37 @@ import os
 import gym 
 import datetime
 import torch 
+import numpy as np 
 
+def eval(env_class, agent, flags, logger, obs_preprocessing):
+    env = env_class()
+
+    agent_eps = agent.epsilon 
+    agent.epsilon = flags.test_epsilon 
+    rewards = [0 for i in range(flags.test_episodes)]
+    for i in range(flags.test_episodes):    
+        done = False 
+        timestep = 0 
+        state = env.reset()
+        while not done:
+            act = agent.act(obs_preprocessing(torch.tensor(state, device=flags.device)).unsqueeze(0))
+            ns, reward, done, info = env.step(act)
+            rewards[i] += reward
+            if timestep >= flags.test_horizon:
+                done = True
+            timestep += 1
+    info_dict = {
+        "timestep": float(timestep),
+        "return_mean" : float(np.mean(rewards)),
+        "return_median" : float(np.median(rewards)),
+        "return_var" : float(np.var(rewards))
+    }
+    logger.log_eval(info_dict)
+    agent.epsilon = agent_eps 
+    
 def train(env_class, agent, flags, logger):
     obs_preprocessing = lambda x : x.unsqueeze(0)
+    # obs_preprocessing = lambda x : x  # CartPole
     buffer = RolloutBuffer(flags.buffer_len, ['state', 'action', 'reward',  'done', 'next_state'], obs_preprocessing)
     
     envs = [env_class() for i in range(flags.n_envs)] 
@@ -53,6 +81,8 @@ def train(env_class, agent, flags, logger):
             if timestep % flags.target_update_freq == 0:
                 agent.update_target()
                 target_update_count += 1
+            if timestep % flags.eval_freq == 0:
+                eval(env_class, agent, flags, logger, obs_preprocessing)
                 
         agent.anneal_epsilon(timestep)
         if timestep > time_to_checkpoint:
@@ -66,7 +96,7 @@ def train(env_class, agent, flags, logger):
         steps = [envs[i].step(actions[i]) for i in range(len(envs))]
         for i, (ns, r, done, info) in enumerate(steps):
             buffer.append({k:v for k,v in zip(['state', 'action', 'reward',  'done', 'next_state'], 
-                                                [envs_states[i], actions[i], r, done,  ns])}, device=flags.device)
+                                                [envs_states[i].copy(), actions[i], r, done,  ns])}, device=flags.device)
             envs_states[i] = ns
             envs_reward[i] += r
             envs_timesteps[i] += 1
