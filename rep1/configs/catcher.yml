@@ -32,6 +32,13 @@ epsilon_max_timesteps : 1e5
 log_freq : 100
 checkpoint_num : 4 
 
+# Test 
+eval_freq : 10000
+test_epsilon : 0.1
+test_horizon : 100
+test_episodes : 32
+
+
 # --- Network Candidates ----
 act: &act Tanh
 crar_convs: &crar_convs

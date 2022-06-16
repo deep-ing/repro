@@ -11,8 +11,6 @@ env : maze
 n_envs : 1
 timesteps : 1e6
 train_start_timestep : 1e4
-learn_epoch : 1
-max_training_epoch : 100000
 
 target_update_freq : 10000
 learning_rate : 0.0005
