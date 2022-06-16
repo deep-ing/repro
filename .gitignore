@@ -198,3 +198,5 @@ result
 result/*
 
 outputs 
+
+*.out
