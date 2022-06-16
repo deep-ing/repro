@@ -2,27 +2,32 @@
 random_action : true
 discount_factor : 0.9
 abstract_dim : 2
-buffer_len : 10000
+buffer_len : 1000000
 batch_size : 32
 device : "cuda:0"
 
 # Training Config
 env : maze
 n_envs : 4
-timesteps : 1e6
-target_update_freq : 1
+timesteps : 1e5
+target_update_freq : 1000
 learning_rate : 0.0005
 weight_decay : 0
+horizon : 100
+
+# Loss Magnitude
 beta : 0.20
-ld_lambda : 0.0
-model_lambda : 0.0
+ld_lambda : 1.0
+model_lambda : 1.0
+
+# Exploration
 epsilon_init : 0.9
 epsilon_final : 0.1
+epsilon_max_timesteps : 1e5
 
 # Utils
 log_freq : 100
-checkpoint_freq : 
-
+checkpoint_num : 10
 
 # --- Network Candidates ----
 act: &act Tanh
@@ -35,57 +40,45 @@ encoder_: &encoder_
   - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: same}]
   - *act
   - [MaxPool2d, { kernel_size: 2 }]
-  - [Conv2d, 32, 2, { kernel_size: 1, stride: 1, padding: same}]
+  - [Flatten, { }]
+  - [Linear, 4608, 200, {}]
+  - *act
+  - [Linear, 200, 100, {}]
+  - *act
+  - [Linear, 100, 50, {}]
+  - *act
+  - [Linear, 50, 10, {}]
+  - *act
+  - [Linear, 10, auto, {}]
 
 q : &q
-  - [Conv2d, 2, 16, { kernel_size: 2, stride: 1, padding: same}]
+  - [Linear, auto, 20, {}]
   - *act
-  - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: same}]
-  - *act
-  - [MaxPool2d, { kernel_size: 2 }]
-  - [Conv2d, 32, 16, { kernel_size: 2, stride: 1, padding: same}]
-  - *act
-  - [Conv2d, 16, 4, { kernel_size: 1, stride: 1, padding: same}]
-  - *act
-  - [Flatten, { }]
-  - [Linear, 6, 200, {}]
-  - *act
-  - [Linear, 200, 50, {}]
+  - [Linear, 20, 50, {}]
   - *act
   - [Linear, 50, 20, {}]
   - *act
-  - [Linear, 20, 2, {}]
+  - [Linear, 20, auto, {}]
 
 transition: &transition
-  - [Conv2d, 2, 16, { kernel_size: 1, stride: 1, padding: same}]
+  - [Linear, auto, 10, {}]
   - *act
-  - [Conv2d, 16, 32, { kernel_size: 2, stride: 1, padding: same}]
+  - [Linear, 10, 30, {}]
   - *act
-  - [Conv2d, 32, 64, { kernel_size: 3, stride: 1, padding: same}]
+  - [Linear, 30, 30, {}]
   - *act
-  - [Conv2d, 64, 32, { kernel_size: 2, stride: 1, padding: same}]
+  - [Linear, 30, 10, {}]
   - *act
-  - [Conv2d, 32, 16, { kernel_size: 1, stride: 1, padding: same}]
-  - *act
+  - [Linear, 10, auto, {}]
 
 reward_gamma : &reward_gamma
-  - [Conv2d, 2, 16, { kernel_size: 2, stride: 1, padding: same}]
+  - [Linear, auto, 10, {}]
   - *act
-  - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: same}]
-  - *act
-  - [MaxPool2d, { kernel_size: 2 }]
-  - [Conv2d, 32, 16, { kernel_size: 2, stride: 1, padding: same}]
-  - *act
-  - [Conv2d, 16, 4, { kernel_size: 1, stride: 1, padding: same}]
-  - *act
-  - [Flatten, { }]
-  - [Linear, 6, 200, {}]
-  - *act
-  - [Linear, 200, 50, {}]
+  - [Linear, 10, 50, {}]
   - *act
   - [Linear, 50, 20, {}]
   - *act
-  - [Linear, 20, 1, {}]
+  - [Linear, 20, auto, {}]
 
 
 # --- Models ---
