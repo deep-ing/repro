@@ -65,6 +65,11 @@ def train(env_class, agent, flags, logger):
             for j in range(flags.learn_epoch):
                 env_batch = buffer.sample(flags.batch_size, flags.device)
                 agent.learn(env_batch)
+                if j % flags.target_update_freq == 0:
+                    agent.update_target()
+                    target_update_count += 1
+                if j % flags.log_freq  == 0:
+                    agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
             
             if timestep % flags.log_freq  == 0:
                 agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))

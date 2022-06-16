@@ -16,7 +16,7 @@ class CRAR(nn.Module):
         super(CRAR, self).__init__()
         self.observation_space = observation_space
         self.action_space = action_space
-        self.action_input_dim = 1
+        self.action_input_dim = action_space.n
         self.action_ouput_dim = action_space.n
         self.flags = flags
         self.beta = self.flags.beta 
@@ -65,8 +65,9 @@ class CRAR(nn.Module):
         next_q_values[dones] = 0         
         # Transition, Reward, Discount 
         assert actions.ndim==2, actions.ndim
-        transition_pred = self.transition_net(torch.cat((encoded_states, actions), 1))
-        reward_pred     = self.reward_net(torch.cat((encoded_states, actions), 1))
+        onehot_actions = nn.functional.one_hot(actions.long(), self.action_space.n).squeeze(1)
+        transition_pred = self.transition_net(torch.cat((encoded_states, onehot_actions), 1))
+        reward_pred     = self.reward_net(torch.cat((encoded_states, onehot_actions), 1))
         # discount_pred   = self.discount_net(torch.cat((encoded_states, actions), 1))
 
         # --- compute the loss
