@@ -21,6 +21,7 @@ class CRAR():
         self.action_ouput_dim = action_space.n
         self.flags = flags
         self.beta = self.flags.beta 
+        self.ld_lambda = self.flags.ld_lambda
         self.discount_factor = self.flags.discount_factor
         self.abstract_dim = self.flags.abstract_dim 
         self.epsilon = self.flags.epsilon_init
@@ -70,7 +71,7 @@ class CRAR():
         ld1_loss        = compute_LD1_loss(encoded_random_states1, encoded_random_states2) 
         ld1_prime_loss  = compute_LD1_prime_loss(encoded_states, encoded_next_states) 
         ld2_loss        = compute_LD2_loss(encoded_states)
-        ld_loss = ld1_loss + self.beta * ld1_prime_loss + ld2_loss
+        ld_loss = ld1_loss + self.beta * ld1_prime_loss + self.ld_lambda  * ld2_loss
         loss =  mf_loss + reward_loss + transition_loss + ld_loss
         
         self.optimizer.zero_grad()

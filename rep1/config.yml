@@ -5,22 +5,26 @@
 random_action : true
 discount_factor : 0.999
 abstract_dim : 2
-buffer_len : 1000
-batch_size : 4
+buffer_len : 10000
+batch_size : 32
 device : "cuda:0"
 
 # Training Config
+env : maze
 n_envs : 4
-timesteps : 100000
+timesteps : 1e6
 target_update_freq : 1000
 learning_rate : 1e-4
 weight_decay : 0
 beta : 0.20
+ld_lambda : 0.0
 epsilon_init : 0.9
 epsilon_final : 0.1
 
 # Utils
 log_freq : 100
+checkpoint_freq : 
+
 
 # --- Network Candidates ----
 act: &act Tanh
@@ -50,9 +54,11 @@ slim_fc : &slim_fc
   - *act
   - [Linear, 32, "auto", {}]
 
+
 # --- Models ---
 encoder: *crar_convs
 q_net: *deep_fc
 transition_net: *deep_fc
 reward_net: *slim_fc
 discount_net: *slim_fc
+

@@ -1,6 +1,6 @@
 from agent.CRAR  import CRAR 
 from omegaconf import OmegaConf
-from envs import SimpleMazeEnv
+from envs import SimpleMazeEnv, MazeEnv, CatcherEnv
 from utils.buffer import RolloutBuffer
 from utils.logger import PlatformLogger
 import os 
@@ -11,10 +11,17 @@ import torch
 flags = OmegaConf.load("config.yml")
 output_dir = "results/"
 
-envs = [SimpleMazeEnv() for i in range(flags.n_envs)] 
+env_class = {
+                "simple_maze" :SimpleMazeEnv,
+                "catcher" : MazeEnv,
+                "maze":MazeEnv
+            }[flags.env]
+
+envs = [env_class() for i in range(flags.n_envs)] 
 envs_states = [env.reset() for env in envs]
 envs_dones = [False for i in range(flags.n_envs)]
 episode_reward = [0 for i in range(flags.n_envs)]
+episode_steps = [0 for i in range(flags.n_envs)]
 
 obs_preprocessing = lambda x : x.unsqueeze(0)
 buffer = RolloutBuffer(flags.buffer_len, ['state', 'action', 'reward',  'done', 'next_state'], obs_preprocessing)
@@ -35,14 +42,16 @@ timestep = 0
 episode_count = 0 
 sum_return = 0
 while timestep < flags.timesteps:
-    timestep +=1 
+    timestep += flags.n_envs 
     if len(buffer) >= flags.batch_size:
         env_batch = buffer.sample(flags.batch_size, flags.device)
         agent.learn(env_batch)
         epsiode_return_mean = 0 if episode_count==0  else sum_return / episode_count
         
         if timestep % flags.log_freq  == 0:
-            info_dict = {"episode_return_mean" : float(epsiode_return_mean),
+            info_dict = {"timestep": timestep,
+                        "episode_return_mean" : float(epsiode_return_mean),
+                        "episode_steps_mean" : float(sum(episode_steps)/flags.n_envs),
                          "epsilon" : float(agent.epsilon)}
             logger.log_iteration(info_dict)
         if timestep % flags.target_update_freq == 0:
@@ -59,7 +68,10 @@ while timestep < flags.timesteps:
         envs_states[i] = ns
         envs_dones[i] = done
         episode_reward[i] += r
+        episode_steps[i] += 1
         if done:
             episode_count +=1 
             sum_return += episode_reward[i]
             episode_reward[i] = 0
+            episode_steps[i] = 0
+            
