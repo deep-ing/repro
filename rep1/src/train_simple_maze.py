@@ -14,6 +14,7 @@ def eval(env_class, agent, flags, logger, obs_preprocessing):
 
     agent_eps = agent.epsilon
     agent.epsilon = flags.test_epsilon 
+    flags.random_action = False
     rewards = [0 for i in range(flags.test_episodes)]
     for i in range(flags.test_episodes):    
         done = False 
@@ -34,6 +35,7 @@ def eval(env_class, agent, flags, logger, obs_preprocessing):
     }
     logger.log_eval(info_dict)
     agent.epsilon = agent_eps 
+    flags.random_action = True
     
 def train(env_class, agent, flags, logger):
     obs_preprocessing = lambda x : x.unsqueeze(0)
@@ -53,58 +55,10 @@ def train(env_class, agent, flags, logger):
 
 
     target_update_count = 0
-    train_count = 0
     checkpoint_timestep = flags.timesteps // flags.checkpoint_num
     time_to_checkpoint = checkpoint_timestep
-    while timestep < flags.timesteps:
-        timestep += flags.n_envs 
-        if len(buffer) >= flags.batch_size and timestep > flags.train_start_timestep:
-            if train_count > flags.max_training_epoch:
-                break
-            train_count += 1
-            for j in range(flags.learn_epoch):
-                env_batch = buffer.sample(flags.batch_size, flags.device)
-                agent.learn(env_batch)
-                if j % flags.target_update_freq == 0:
-                    agent.update_target()
-                    target_update_count += 1
-                if j % flags.log_freq  == 0:
-                    agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
-            
-            if timestep % flags.log_freq  == 0:
-                agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
-                # agent.load(os.path.join(logger.result_path, f"checkpoint.tar"))
-                
-                info_dict = {
-                    "timestep": float(timestep),
-                    "target_update_count" : float(target_update_count),
-                    "episode_count" : float(episode_count),
-                    "epsilon" : float(agent.epsilon)
-                }
-                if len(returns) > 0 :
-                    info_dict.update({"episode_return_mean":sum(returns) / len(returns)})
-                    returns = []
-                if len(episode_steps) >0:
-                    info_dict.update({"episode_steps_mean":sum(episode_steps) / len(episode_steps)})
-                    episode_steps = []
-                logger.log_iteration(info_dict)
-                
-            if timestep % flags.target_update_freq == 0:
-                agent.update_target()
-                target_update_count += 1
-            if timestep % flags.lr_decay_freq == 0:
-                agent.lr_schduler.step()
-                
-                target_update_count += 1
-            if timestep % flags.eval_freq == 0:
-                eval(env_class, agent, flags, logger, obs_preprocessing)
-                
-        agent.anneal_epsilon(timestep)
-        if timestep > time_to_checkpoint:
-            agent.save(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
-            # agent.load(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
-            time_to_checkpoint += checkpoint_timestep
-        
+
+    while len(buffer) < flags.train_start_timestep:
         # Run Environments
         envs_states = [envs_states[i] if not envs_dones[i] else envs[i].reset() for i in range(len(envs_states))]
         actions = [agent.act(obs_preprocessing(torch.tensor(state, device=flags.device)).unsqueeze(0)) for state in envs_states]
@@ -124,6 +78,45 @@ def train(env_class, agent, flags, logger):
                 episode_steps.append(envs_timesteps[i])
                 envs_reward[i] = 0
                 envs_timesteps[i] = 0
+
+    while timestep < flags.timesteps:
+        timestep += 1
+        
+        env_batch = buffer.sample(flags.batch_size, flags.device)
+        agent.learn(env_batch)
+        
+        if timestep % flags.log_freq  == 0:
+            agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
+            # agent.load(os.path.join(logger.result_path, f"checkpoint.tar"))
+            
+            info_dict = {
+                "timestep": float(timestep),
+                "target_update_count" : float(target_update_count),
+                "episode_count" : float(episode_count),
+                "epsilon" : float(agent.epsilon)
+            }
+            if len(returns) > 0 :
+                info_dict.update({"episode_return_mean":sum(returns) / len(returns)})
+                returns = []
+            if len(episode_steps) >0:
+                info_dict.update({"episode_steps_mean":sum(episode_steps) / len(episode_steps)})
+                episode_steps = []
+            logger.log_iteration(info_dict)
+            
+        if timestep % flags.target_update_freq == 0:
+            agent.update_target()
+            target_update_count += 1
+        if timestep % flags.lr_decay_freq == 0:
+            agent.lr_schduler.step()
+            
+        if timestep % flags.eval_freq == 0:
+            eval(env_class, agent, flags, logger, obs_preprocessing)
+                
+        agent.anneal_epsilon(timestep)
+        if timestep > time_to_checkpoint:
+            agent.save(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
+            # agent.load(os.path.join(logger.result_path, f"checkpoint_{time_to_checkpoint/flags.timesteps:.1f}.tar"))
+            time_to_checkpoint += checkpoint_timestep
                 
 if __name__ == "__main__":
     flags = OmegaConf.load("configs/config.yml")

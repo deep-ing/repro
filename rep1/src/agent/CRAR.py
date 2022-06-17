@@ -23,7 +23,10 @@ class CRAR(nn.Module):
         self.beta = self.flags.beta 
         self.ld_lambda = self.flags.ld_lambda
         self.model_lambda = self.flags.model_lambda
-        self.inter_lambda = self.flags.inter_lambda
+        try:
+            self.inter_lambda = self.flags.inter_lambda
+        except:
+            self.inter_lambda = 0
         self.discount_factor = self.flags.discount_factor
         self.abstract_dim = self.flags.abstract_dim 
         self.epsilon = self.flags.epsilon_init
@@ -61,12 +64,12 @@ class CRAR(nn.Module):
         states, actions, rewards, dones, next_states = batch
         # random_states2 = states
         encoded_states  = self.encoder(states)
-        encoded_next_states = self.encoder_target(next_states)
+        encoded_next_states = self.encoder(next_states)
         encoded_random_states1 =  encoded_states                 # self.encoder(random_states1)
         encoded_random_states2 =  encoded_states.roll(1, dims=0) # self.encoder(random_states2)
         # Q Values 
         q_values = self.q_net.forward(encoded_states).gather(-1, (actions.to(torch.int64)))
-        next_q_values = self.q_target_net.forward(encoded_next_states).detach().max(dim=-1)[0].unsqueeze(-1)
+        next_q_values = self.q_target_net.forward(self.encoder_target(next_states)).detach().max(dim=-1)[0].unsqueeze(-1)
         next_q_values[dones] = 0         
         # Transition, Reward, Discount 
         assert actions.ndim==2, actions.ndim
@@ -95,7 +98,7 @@ class CRAR(nn.Module):
             interpretable_vector[0:2,1] = 1
             interpretable_loss = compute_interpretable_loss(transition_pred_all ,interpretable_vector)
         else:
-            interpretable_loss = torch.tensor([0.0])
+            interpretable_loss = torch.tensor([0.0], device=self.flags.device)
             
         
         loss =  mf_loss \

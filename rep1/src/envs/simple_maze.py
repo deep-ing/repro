@@ -82,7 +82,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self._map[:,self._size_maze//2] = 1
         self._map[self._size_maze//2,self._size_maze//2] = 0
 
-        self._pos_agent = [2,2]
+        self._pos_agent = [self._size_maze//2,self._size_maze//2]
         self._pos_goal = [self._size_maze-2, self._size_maze-2]
 
     def reset(
@@ -96,7 +96,7 @@ class SimpleMazeEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         self.create_map()
 
-        self._pos_agent = [2,2]
+        self._pos_agent = [self._size_maze//2,self._size_maze//2]
 
         self.state = self.observe()
         
