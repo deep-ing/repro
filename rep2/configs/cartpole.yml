@@ -1,13 +1,13 @@
 # Action 
 random_action : false
+hidden_dim: 10
 discount_factor : 0.99
-abstract_dim : 3
 buffer_len : 5000
 batch_size : 32
 device : "cuda:0"
 
 # Training Config
-env : CartPole-v1
+env : cartpole
 n_envs : 1
 timesteps : 1e5
 train_start_timestep : 1e3
@@ -16,13 +16,7 @@ learning_rate : 1e-4
 lr_decay : 0.90
 lr_decay_freq : 2000
 weight_decay : 0
-horizon : 100
-
-# Loss Magnitude
-beta : 0.20
-ld_lambda : 1.0
-model_lambda : 1.0
-inter_lambda : 1.0
+horizon : 200
 
 # Exploration
 epsilon_init : 0.9
@@ -41,61 +35,23 @@ test_episodes : 32
 
 # --- Network Candidates ----
 act: &act Tanh
-encoder_: &encoder_
-  - [Conv2d, auto, 8, { kernel_size: 2, stride: 1, padding: same}]
+q: &q
+  - [Linear, auto, hidden_dim, {}]
   - *act
-  - [Conv2d, 8, 16, { kernel_size: 2, stride: 1, padding: same}]
+  - [Linear, hidden_dim, hidden_dim, {}]
   - *act
-  - [MaxPool2d, { kernel_size: 2 }]
-  - [Conv2d, 16, 32, { kernel_size: 3, stride: 1, padding: same}]
+  - [Linear, hidden_dim, auto, {}]
+encoder: &encoder
+  - [Linear, auto, hidden_dim, {}]
+osi: &osi
+  - [Linear, hidden_dim, hidden_dim, {}]
   - *act
-  - [MaxPool2d, { kernel_size: 2 }]
-  - [Flatten, { }]
-  - [Linear, 2592, auto, {}]
-
-slim_fc : &slim_fc
-  - [Linear, "auto", 32, {}]
+  - [GRU, hidden_dim, hidden_dim, {batch_first: true}]
   - *act
-  - [Linear, 100, 50, {}]
-  - *act
-  - [Linear, 50, 10, {}]
-  - *act
-  - [Linear, 10, auto, {}]
-
-q : &q
-  - [Linear, auto, 20, {}]
-  - *act
-  - [Linear, 20, 50, {}]
-  - *act
-  - [Linear, 50, 20, {}]
-  - *act
-  - [Linear, 20, auto, {}]
-
-transition: &transition
-  - [Linear, auto, 10, {}]
-  - *act
-  - [Linear, 10, 30, {}]
-  - *act
-  - [Linear, 30, 30, {}]
-  - *act
-  - [Linear, 30, 10, {}]
-  - *act
-  - [Linear, 10, auto, {}]
-
-reward_gamma : &reward_gamma
-  - [Linear, auto, 10, {}]
-  - *act
-  - [Linear, 10, 50, {}]
-  - *act
-  - [Linear, 50, 20, {}]
-  - *act
-  - [Linear, 20, auto, {}]
-
+  - [Linear, hidden_dim, auto, {}]
 
 # --- Models ---
-encoder: *encoder_
 q_net: *q
-transition_net: *transition
-reward_net: *reward_gamma
-discount_net: *reward_gamma
-
+OSI: *osi
+state_encoder: *encoder
+action_encoder: *encoder

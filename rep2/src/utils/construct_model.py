@@ -3,8 +3,6 @@ import torch
 import torch.nn as nn 
 
 
-
-
 def construct_nn_from_config(layer_list, input_shape, output_shape):
     nets = []
     for i, layer in enumerate(layer_list) :
@@ -26,11 +24,7 @@ def construct_nn_from_config(layer_list, input_shape, output_shape):
     
 if __name__ == "__main__":
     from omegaconf import OmegaConf
-    config =OmegaConf.load("config.yml")
-    trans_net = construct_nn_from_config(config.transition_net, 20, 20)
-    reward_net = construct_nn_from_config(config.reward_net, 20, 1)
-    q_net = construct_nn_from_config(config.q_net, 20, 10)
-    discount_net = construct_nn_from_config(config.discount_net, 20, 1)
-    encoder = construct_nn_from_config(config.encoder, 1, 20)
-    print(encoder)
+    config = OmegaConf.load("config.yml")
+    q_net = construct_nn_from_config(config.q_net, 20, 20)
+    print(q_net)
     

@@ -1,6 +1,7 @@
 from collections import deque 
 import torch
 import numpy as np
+
 class RolloutBuffer:
     def __init__(self, maxlen, value_name_list, obs_preprocessing=None):
         self.maxlen = maxlen
