@@ -50,8 +50,8 @@ class UP_OSI(nn.Module):
             states, actions, rewards, dones, next_states, domains = batch
 
             # Q Values
-            q_values = self.q_net.forward(torch.cat((states, domains), dim=-1).squeeze(1)).gather(-1, (actions.to(torch.int64)))
-            next_q_values = self.q_target_net.forward(next_states.squeeze(1)).detach().max(dim=-1)[0].unsqueeze(-1)
+            q_values = self.q_net.forward(torch.cat((states, domains), dim=-1)).gather(-1, (actions.to(torch.int64)))
+            next_q_values = self.q_target_net.forward(torch.cat((next_states, domains), dim=-1)).detach().max(dim=-1)[0].unsqueeze(-1)
             next_q_values[dones > 0] = 0
 
             # --- compute the loss
