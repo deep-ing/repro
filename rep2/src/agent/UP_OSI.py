@@ -10,12 +10,14 @@ from utils.losses import (
 from utils.construct_model import construct_nn_from_config
 
 class UP_OSI(nn.Module):
-    def __init__(self, observation_space, action_space, flags, logger):
+    def __init__(self, observation_space, len_simulation_parameters, action_space, flags, logger):
         super(UP_OSI, self).__init__()
         self.observation_space = observation_space
+        self.domain_dim = len_simulation_parameters
         self.action_space = action_space
-        self.action_input_dim = action_space.n
-        self.action_ouput_dim = action_space.n
+        
+        self.obs_dim = observation_space.shape[0]
+        self.action_dim = action_space.n
 
         self.flags = flags
         self.discount_factor = self.flags.discount_factor
@@ -23,12 +25,12 @@ class UP_OSI(nn.Module):
         self.epsilon_max_timesteps = self.flags.epsilon_max_timesteps
         self.logger = logger
 
-        self.q_net          = construct_nn_from_config(self.flags.q_net,   self.observation_space.shape[0] + 2, self.action_ouput_dim).to(flags.device)
-        self.q_target_net   = construct_nn_from_config(self.flags.q_net,   self.observation_space.shape[0] + 2, self.action_ouput_dim).to(flags.device)
+        self.q_net = construct_nn_from_config(self.flags.q_net, self.obs_dim + self.domain_dim, self.action_dim).to(flags.device)
+        self.q_target_net = construct_nn_from_config(self.flags.q_net, self.obs_dim + self.domain_dim, self.action_dim).to(flags.device)
 
-        self.state_encoder = construct_nn_from_config(self.flags.state_encoder, self.observation_space.shape[0], self.flags.hidden_dim).to(flags.device)
-        self.action_encoder = construct_nn_from_config(self.flags.action_encoder, self.action_input_dim, self.flags.hidden_dim).to(flags.device)
-        self.OSI = construct_nn_from_config(self.flags.OSI, self.flags.hidden_dim, 2).to(flags.device)
+        self.state_encoder = construct_nn_from_config(self.flags.state_encoder, self.obs_dim, self.flags.hidden_dim).to(flags.device)
+        self.action_encoder = construct_nn_from_config(self.flags.action_encoder, self.action_dim, self.flags.hidden_dim).to(flags.device)
+        self.OSI = construct_nn_from_config(self.flags.OSI, self.flags.hidden_dim, self.domain_dim).to(flags.device)
         
         self.q_target_net.eval()
         
@@ -45,28 +47,30 @@ class UP_OSI(nn.Module):
     
     def learn(self, batch, mode=0):
         if mode == 0:
-            states, actions, rewards, dones, next_states = batch
+            states, actions, rewards, dones, next_states, domains = batch
 
             # Q Values
-            q_values = self.q_net.forward(states).gather(-1, (actions.to(torch.int64)))
-            next_q_values = self.q_target_net.forward(next_states).detach().max(dim=-1)[0].unsqueeze(-1)
-            next_q_values[dones] = 0
+            q_values = self.q_net.forward(torch.cat((states, domains), dim=-1).squeeze(1)).gather(-1, (actions.to(torch.int64)))
+            next_q_values = self.q_target_net.forward(next_states.squeeze(1)).detach().max(dim=-1)[0].unsqueeze(-1)
+            next_q_values[dones > 0] = 0
 
             # --- compute the loss
             loss = compute_model_free_loss(q_values, next_q_values, rewards, self.discount_factor)        
         
         else:
             # System identification
-            states, actions, domains = batch
+            states, actions, rewards, dones, next_states, domains = batch
 
-            states = self.state_encoder(states)
-            actions = self.action_encoder(actions)
-            history = torch.stack((states, actions), dim=2).view(states.shape[0], -1, states.shape[-1])[:,:-1,:]
-            domains_pred = self.OSI(history)
+            encoded_states = self.state_encoder(states)
+            onehot_actions = nn.functional.one_hot(actions.long(), self.action_dim).squeeze(-2).to(torch.float32)
+            encoded_actions = self.action_encoder(onehot_actions)
+            history = torch.stack((encoded_states, encoded_actions), dim=2).view(encoded_states.shape[0], -1, encoded_states.shape[-1])[:,:-1,:]
+            domains_pred = self.OSI(history)[:,-1] ### last timestep
+            domains = domains[:,-1] ### last timestep
 
             # --- compute the loss
             loss = compute_system_identification_loss(domains_pred, domains)
-                
+
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -79,7 +83,7 @@ class UP_OSI(nn.Module):
             return self.action_space.sample()
         if self.epsilon < np.random.random():
             with torch.no_grad():
-                action = self.q_net(obs).argmax(1).item()                
+                action = self.q_net(obs).argmax(1).item()
         else:
             action = self.action_space.sample()
         return action 

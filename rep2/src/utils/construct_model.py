@@ -9,18 +9,17 @@ def construct_nn_from_config(layer_list, input_shape, output_shape):
         if not isinstance(layer, str):
             if layer[0] in ['Linear', 'Conv2d']:
                 (layer_name, in_dim, out_dim, kwargs) = layer
-                if i==0 and in_dim == "auto":
+                if i == 0 and in_dim == "auto":
                     in_dim = input_shape
-                if i==len(layer_list)-1 and out_dim == "auto":
+                if i == len(layer_list) - 1 and out_dim == "auto":
                     out_dim = output_shape
                 net = getattr(nn, layer_name)(in_dim, out_dim, **kwargs)
             elif layer[0] in ["MaxPool2d", 'Flatten']:
                 net = getattr(nn, layer[0])(**layer[1])
         else:
             net = getattr(nn, layer)()
-        nets.append(net) 
+        nets.append(net)
     return nn.Sequential(*nets)
-    
     
 if __name__ == "__main__":
     from omegaconf import OmegaConf

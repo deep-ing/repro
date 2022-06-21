@@ -1,9 +1,10 @@
 # Action 
 random_action : false
-hidden_dim: 10
+hidden_dim: &hidden_dim 10
 discount_factor : 0.99
 buffer_len : 5000
 batch_size : 32
+len_history : 5
 device : "cuda:0"
 
 # Training Config
@@ -29,26 +30,26 @@ checkpoint_num : 10
 
 # Test 
 eval_freq : 10000
-test_epsilon : 0.1
-test_horizon : 100
+test_epsilon : 0.0
+test_horizon : 200
 test_episodes : 32
 
 # --- Network Candidates ----
 act: &act Tanh
 q: &q
-  - [Linear, auto, hidden_dim, {}]
+  - [Linear, auto, *hidden_dim, {}]
   - *act
-  - [Linear, hidden_dim, hidden_dim, {}]
+  - [Linear, *hidden_dim, *hidden_dim, {}]
   - *act
-  - [Linear, hidden_dim, auto, {}]
+  - [Linear, *hidden_dim, auto, {}]
 encoder: &encoder
-  - [Linear, auto, hidden_dim, {}]
+  - [Linear, auto, *hidden_dim, {}]
 osi: &osi
-  - [Linear, hidden_dim, hidden_dim, {}]
+  - [Linear, *hidden_dim, *hidden_dim, {}]
   - *act
-  - [GRU, hidden_dim, hidden_dim, {batch_first: true}]
+  - [GRU, *hidden_dim, *hidden_dim, {batch_first: true}]
   - *act
-  - [Linear, hidden_dim, auto, {}]
+  - [Linear, *hidden_dim, auto, {}]
 
 # --- Models ---
 q_net: *q

@@ -2,8 +2,9 @@ import numpy as np
 
 def test_agent():
     import gym
-
-    env = gym.make('CartPole-v1')
+    from envs import CartPoleEnv
+    # env = gym.make('CartPole-v1')
+    env = CartPoleEnv()
 
     total_rewards = []
     len_episodes = []
@@ -23,7 +24,7 @@ def test_agent():
             total_reward += reward
 
             print(len_episode)
-            if len_episode >= 50:
+            if len_episode >= 200:
                 break
         total_rewards.append(total_reward)
         len_episodes.append(len_episode)

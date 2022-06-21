@@ -131,7 +131,7 @@ class CartPoleEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         err_msg = f"{action!r} ({type(action)}) invalid"
         assert self.action_space.contains(action), err_msg
         assert self.state is not None, "Call reset before using step method."
-        x, x_dot, theta, theta_dot, _, _ = self.state
+        x, x_dot, theta, theta_dot = self.state
         force = self.force_mag if action == 1 else -self.force_mag
         costheta = math.cos(theta)
         sintheta = math.sin(theta)
@@ -157,8 +157,8 @@ class CartPoleEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
 
-        self.state = (x, x_dot, theta, theta_dot, self.masspole, self.length)
-
+        self.state = (x, x_dot, theta, theta_dot)
+        
         done = bool(
             x < -self.x_threshold
             or x > self.x_threshold
@@ -186,6 +186,19 @@ class CartPoleEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         # self.renderer.render_step()
         return np.array(self.state, dtype=np.float32), reward, done, {}
 
+    def get_simulator_parameters(self, keys): ###
+        return [getattr(self, key)/getattr(self, key+'_original') for key in keys]
+
+    def set_simulator_parameters(self, params): ###
+        # params: dict with (param_name, scaling_factor)
+        for key in params:
+            if not hasattr(self, key+'_original'):
+                setattr(self, key+'_original', getattr(self, key))
+            setattr(self, key, params[key]*getattr(self, key+'_original'))
+
+        self.total_mass = self.masspole + self.masscart
+        self.polemass_length = self.masspole * self.length
+            
     def reset(
         self,
         *,
@@ -194,8 +207,7 @@ class CartPoleEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         options: Optional[dict] = None,
     ):
         super().reset(seed=seed)
-        self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(6,))
-        self.state[-2:] = [self.masspole, self.length]
+        self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
         # self.renderer.reset()
         # self.renderer.render_step()

@@ -1,7 +1,8 @@
 def test_humanplay():
     import gym
-
-    env = gym.make('CartPole-v1')
+    from envs import CartPoleEnv
+    # env = gym.make('CartPole-v1')
+    env = CartPoleEnv()
 
     env.reset()
     env.render()

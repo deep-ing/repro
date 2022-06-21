@@ -16,6 +16,8 @@ class RolloutBuffer:
         for key, value in values.items():
             if (isinstance(value, np.ndarray)) :
                 value = self.obs_preprocessing(torch.Tensor(value).to(device))
+            elif (isinstance(value, list)) :
+                value = self.obs_preprocessing(torch.Tensor(value).to(device))
             elif isinstance(value, (float)) :
                 value = torch.Tensor([value]).to(device)
             elif isinstance(value, (bool)) :
@@ -57,14 +59,14 @@ class RolloutBuffer:
     def __len__(self):
         return len(self.deques[self.values_to_stroe[0]])
 
-    def sample(self, batch_size,  device, indices=None):
-        if indices is None :
-            indices = np.random.choice(range(len(self)), size=batch_size, replace=False)  
-            
+    def sample(self, batch_size, len_history, device):
+        indices = np.random.choice(range(len(self)), size=batch_size, replace=True)
+        indices2 = np.random.randint(0, [len(self[self.values_to_stroe[0]][i]) - len_history for i in indices])
+
         batch_dict = []
         for v in self.values_to_stroe:
             try:
-                batch_dict.append(torch.stack([self[v][i] for i in indices]).to(device))
+                batch_dict.append(torch.stack([self[v][i][j:j+len_history] for i, j in zip(indices, indices2)]).to(device))
             except:
                 print(v, self[v][0])    
         return batch_dict
