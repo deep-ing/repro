@@ -2,27 +2,27 @@
 random_action : false
 hidden_dim: &hidden_dim 10
 discount_factor : 0.99
-buffer_len : 5000
-batch_size : 32
+buffer_len : 10000
+batch_size : 128
 len_history : 5
 device : "cuda:0"
 
 # Training Config
 env : cartpole
 n_envs : 1
-timesteps : 1e5
-train_start_timestep : 1e3
-target_update_freq : 1e3
-learning_rate : 1e-4
+timesteps : 100000
+train_start_timestep : 1000
+target_update_freq : 500
+learning_rate : 0.001
 lr_decay : 0.90
-lr_decay_freq : 2000
+lr_decay_freq : 100000
 weight_decay : 0
 horizon : 200
 
 # Exploration
 epsilon_init : 0.9
-epsilon_final : 0.1
-epsilon_max_timesteps : 1e5
+epsilon_final : 0.05
+epsilon_max_timesteps : 50000
 
 # Utils
 log_freq : 100
@@ -32,7 +32,7 @@ checkpoint_num : 10
 eval_freq : 10000
 test_epsilon : 0.0
 test_horizon : 200
-test_episodes : 32
+test_episodes : 100
 
 # --- Network Candidates ----
 act: &act Tanh

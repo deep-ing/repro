@@ -186,10 +186,10 @@ class CartPoleEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         # self.renderer.render_step()
         return np.array(self.state, dtype=np.float32), reward, done, {}
 
-    def get_simulator_parameters(self, keys): ###
-        return [getattr(self, key)/getattr(self, key+'_original') for key in keys]
+    def get_simulator_parameters(self, keys): ####
+        return [getattr(self, key)/getattr(self, key+'_original') if hasattr(self, key+'_original') else 1 for key in keys]
 
-    def set_simulator_parameters(self, params): ###
+    def set_simulator_parameters(self, params): ####
         # params: dict with (param_name, scaling_factor)
         for key in params:
             if not hasattr(self, key+'_original'):

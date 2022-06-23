@@ -9,11 +9,10 @@ from utils.losses import (
 )
 from utils.construct_model import construct_nn_from_config
 
-class UP_OSI(nn.Module):
-    def __init__(self, observation_space, len_simulation_parameters, action_space, flags, logger):
-        super(UP_OSI, self).__init__()
+class Baseline(nn.Module):
+    def __init__(self, observation_space, action_space, flags, logger):
+        super(Baseline, self).__init__()
         self.observation_space = observation_space
-        self.domain_dim = len_simulation_parameters
         self.action_space = action_space
         
         self.obs_dim = observation_space.shape[0]
@@ -25,19 +24,15 @@ class UP_OSI(nn.Module):
         self.epsilon_max_timesteps = self.flags.epsilon_max_timesteps
         self.logger = logger
 
-        self.q_net = construct_nn_from_config(self.flags.q_net, self.obs_dim + self.domain_dim, self.action_dim).to(flags.device)
-        self.q_target_net = construct_nn_from_config(self.flags.q_net, self.obs_dim + self.domain_dim, self.action_dim).to(flags.device)
-
-        self.state_encoder = construct_nn_from_config(self.flags.state_encoder, self.obs_dim, self.flags.hidden_dim).to(flags.device)
-        self.action_encoder = construct_nn_from_config(self.flags.action_encoder, self.action_dim, self.flags.hidden_dim).to(flags.device)
-        self.OSI = construct_nn_from_config(self.flags.OSI, self.flags.hidden_dim, self.domain_dim).to(flags.device)
+        self.q_net = construct_nn_from_config(self.flags.q_net, self.obs_dim, self.action_dim).to(flags.device)
+        self.q_target_net = construct_nn_from_config(self.flags.q_net, self.obs_dim, self.action_dim).to(flags.device)
         
         self.q_target_net.eval()
         
-        self.params = list(self.q_net.parameters()) \
-               + list(self.OSI.parameters())
+        self.params = list(self.q_net.parameters()) #\
+            #    + list(self.OSI.parameters())
                    
-        # self.optimizer = torch.optim.Adam(params, lr=self.flags.learning_rate, 
+        # self.optimizer = torch.optim.Adam(self.params, lr=self.flags.learning_rate, 
         #                                   weight_decay=self.flags.weight_decay) 
     
         self.optimizer = torch.optim.RMSprop(self.params, lr=self.flags.learning_rate, 
@@ -47,12 +42,12 @@ class UP_OSI(nn.Module):
     
     def learn(self, batch, mode=0):
         if mode == 0:
-            states, actions, rewards, dones, next_states, domains = batch
+            states, actions, rewards, dones, next_states = batch
 
             # Q Values
-            q_values = self.q_net.forward(torch.cat((states, domains), dim=-1)).gather(-1, (actions.to(torch.int64)))
-            next_q_values = self.q_target_net.forward(torch.cat((next_states, domains), dim=-1)).detach().max(dim=-1)[0].unsqueeze(-1)
-            next_q_values[dones > 0] = 0
+            q_values = self.q_net.forward(states).gather(-1, (actions.to(torch.int64)))
+            next_q_values = self.q_target_net.forward(next_states).detach().max(dim=-1)[0].unsqueeze(-1)
+            next_q_values[dones] = 0       
 
             # --- compute the loss
             loss = compute_model_free_loss(q_values, next_q_values, rewards, self.discount_factor)        
@@ -73,6 +68,8 @@ class UP_OSI(nn.Module):
 
         self.optimizer.zero_grad()
         loss.backward()
+        for param in self.params:
+            param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
         self.logger.log_agent({
             "mf_loss" if mode == 0 else "si_loss": loss.item(),
@@ -98,14 +95,14 @@ class UP_OSI(nn.Module):
     def save(self, path):
         model_state_dicts = []
         model_state_dicts.append(self.q_net.state_dict())
-        model_state_dicts.append(self.state_encoder.state_dict())
-        model_state_dicts.append(self.action_encoder.state_dict())
-        model_state_dicts.append(self.OSI.state_dict())
+        # model_state_dicts.append(self.state_encoder.state_dict())
+        # model_state_dicts.append(self.action_encoder.state_dict())
+        # model_state_dicts.append(self.OSI.state_dict())
         torch.save(model_state_dicts, path)
         
     def load(self, path):
         model_state_dicts = torch.load(path)
         self.q_net.load_state_dict(model_state_dicts[0])
-        self.state_encoder.load_state_dict(model_state_dicts[1])
-        self.action_encoder.load_state_dict(model_state_dicts[2])
-        self.OSI.load_state_dict(model_state_dicts[3])
+        # self.state_encoder.load_state_dict(model_state_dicts[1])
+        # self.action_encoder.load_state_dict(model_state_dicts[2])
+        # self.OSI.load_state_dict(model_state_dicts[3])

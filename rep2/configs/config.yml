@@ -1,58 +1,59 @@
-# Action 
-random_action : false
-hidden_dim: &hidden_dim 10
-discount_factor : 0.99
-buffer_len : 5000
-batch_size : 32
-len_history : 5
-device : "cuda:0"
-
 # Training Config
-env : cartpole
-n_envs : 1
-timesteps : 1e5
-train_start_timestep : 1e3
-target_update_freq : 1e3
-learning_rate : 1e-4
-lr_decay : 0.90
-lr_decay_freq : 2000
-weight_decay : 0
-horizon : 200
+device: "cuda:0"
+env: cartpole
+n_envs: 1
+max_training_steps: 100000
+# train_start_timestep: 1000
+max_episode_len: 200
+buffer_len: 10000
+batch_size: 800
+# learning_rate: 0.001
+# lr_decay: 0.95
+# lr_decay_freq: 2000
+lr_actor: 0.0003
+lr_critic: 0.001
+gamma: 0.99
+len_history: 5
+random_action: false
 
-# Exploration
-epsilon_init : 0.9
-epsilon_final : 0.1
-epsilon_max_timesteps : 1e5
+# Model (PPO) Config
+hidden_dim: &hidden_dim 10
+eps_clip: 0.25
+K_epochs: 80
+has_continuous_action_space: false
+# target_update_freq: 500
 
-# Utils
-log_freq : 100
-checkpoint_num : 10
+# Test
+eval_freq: 10000
+test_epsilon: 0.0
+test_max_episode_len: 200
+test_num_episodes: 100
 
-# Test 
-eval_freq : 10000
-test_epsilon : 0.0
-test_horizon : 200
-test_episodes : 32
+# # Random exploration
+# epsilon_init: 0.9
+# epsilon_final: 0.05
+# epsilon_max_timesteps: 50000
+
+# Logging / Saving
+log_freq: 100
+checkpoint_num: 10
 
 # --- Network Candidates ----
 act: &act Tanh
-q: &q
+actor_net: &actor_net
   - [Linear, auto, *hidden_dim, {}]
   - *act
   - [Linear, *hidden_dim, *hidden_dim, {}]
   - *act
   - [Linear, *hidden_dim, auto, {}]
-encoder: &encoder
+  - [Softmax, {dim: -1}]
+critic_net: &critic_net
   - [Linear, auto, *hidden_dim, {}]
-osi: &osi
-  - [Linear, *hidden_dim, *hidden_dim, {}]
   - *act
-  - [GRU, *hidden_dim, *hidden_dim, {batch_first: true}]
+  - [Linear, *hidden_dim, *hidden_dim, {}]
   - *act
   - [Linear, *hidden_dim, auto, {}]
 
 # --- Models ---
-q_net: *q
-OSI: *osi
-state_encoder: *encoder
-action_encoder: *encoder
+actor: *actor_net
+critic: *critic_net
