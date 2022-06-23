@@ -135,7 +135,6 @@ class PPO(nn.Module):
         rewards = torch.tensor(discounted_rewards, dtype=torch.float32).to(self.flags.device)
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
 
-        print(states.shape)
         old_states = states.detach()
         old_actions = actions.detach()
         old_logprobs = logprobs.detach()
