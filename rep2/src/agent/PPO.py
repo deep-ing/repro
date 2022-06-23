@@ -30,6 +30,7 @@ class PPO(nn.Module):
         self.has_continuous_action_space = flags.has_continuous_action_space
 
         if self.has_continuous_action_space:
+            self.action_std = flags.action_std_init
             self.action_var = torch.full((action_dim,), flags.action_std_init * flags.action_std_init).to(flags.device)
 
         self.actor = construct_nn_from_config(self.flags.actor, self.state_dim, self.action_dim).to(flags.device)

@@ -98,6 +98,9 @@ def train(env_class, agent, flags, logger):
             if training_step % flags.eval_freq == 0:
                 eval(env_class, agent, flags, logger)
                 print("[INFO] Evaluation is done")
+
+        if flags.has_continuous_action_space and training_step % flags.action_std_decay_freq == 0:
+            agent.decay_action_std(flags.action_std_decay_rate, flags.min_action_std)
                 
         # Logging
         if training_step % flags.log_freq == 0:
