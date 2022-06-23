@@ -21,6 +21,10 @@ hidden_dim: &hidden_dim 10
 eps_clip: 0.25
 K_epochs: 80
 has_continuous_action_space: false
+action_std: 0.6
+action_std_decay_rate: 0.05
+min_action_std: 0.1
+action_std_decay_freq: 250000
 # target_update_freq: 500
 
 # Test
