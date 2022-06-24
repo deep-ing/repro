@@ -19,9 +19,9 @@ def eval(env_class, agent, flags, logger):
     for i in range(flags.test_num_episodes):
         done = False
         state = env.reset()
-        for _ in range(flags.text_max_episode_len):
-            action = agent.select_action(torch.from_numpy(state))
-            state, reward, done, info = env.step(action)
+        for _ in range(flags.test_max_episode_len):
+            action, _ = agent.select_action(torch.from_numpy(state))
+            state, reward, done, info = env.step(action.item())
             total_rewards[i] += reward
             
             if done:
@@ -84,7 +84,7 @@ def train(env_class, agent, flags, logger):
 
         # Learning from samples
         if len(buffer) >= flags.batch_size:
-            batch = buffer.sample(flags.batch_size)
+            batch = buffer.sample(batch_size=-1)
             agent.learn(batch)
             buffer.clear()
 
@@ -95,9 +95,9 @@ def train(env_class, agent, flags, logger):
             #     agent.lr_scheduler.step()
             #     print("[INFO] Learning Rate is updated")
                 
-            if training_step % flags.eval_freq == 0:
-                eval(env_class, agent, flags, logger)
-                print("[INFO] Evaluation is done")
+        if training_step % flags.eval_freq == 0:
+            eval(env_class, agent, flags, logger)
+            print("[INFO] Evaluation is done")
 
         if flags.has_continuous_action_space and training_step % flags.action_std_decay_freq == 0:
             agent.decay_action_std(flags.action_std_decay_rate, flags.min_action_std)
@@ -145,5 +145,8 @@ if __name__ == "__main__":
     }[flags.env]
 
     dummy_env = env_class()
-    agent = PPO(dummy_env.observation_space.shape[0], dummy_env.action_space.n, flags, logger=logger)
+    if flags.has_continuous_action_space:
+        agent = PPO(dummy_env.observation_space.shape[0], dummy_env.action_space.shape[0], flags, logger=logger)
+    else:
+        agent = PPO(dummy_env.observation_space.shape[0], dummy_env.action_space.n, flags, logger=logger)
     train(env_class, agent, flags, logger)

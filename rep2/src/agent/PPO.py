@@ -14,14 +14,14 @@ from utils.losses import (
 from utils.construct_model import construct_nn_from_config
 
 class PPO(nn.Module):
-    def __init__(self, state_dim, action_dim, flags, logger):
+    def __init__(self, state_dim, action_dim, flags, logger=None):
         super(PPO, self).__init__()
         
         self.state_dim = state_dim
         self.action_dim = action_dim
 
         self.flags = flags
-        self.logger = logger
+        # self.logger = logger
 
         self.gamma = flags.gamma
         self.eps_clip = flags.eps_clip
@@ -123,10 +123,7 @@ class PPO(nn.Module):
         logprobs = torch.cat(batch.logprob)
 
         discounted_rewards = []
-        if is_terminals[-1]:
-            discounted_reward = 0
-        else:
-            discounted_reward = self.critic_old(states[-1]).item()
+        discounted_reward = 0
         for reward, is_terminal in zip(reversed(rewards), reversed(is_terminals)):
             if is_terminal:
                 discounted_reward = 0
@@ -164,9 +161,9 @@ class PPO(nn.Module):
             loss.backward()
             self.optimizer.step()
 
-            self.logger.log_agent({
-                "ppo_loss": loss.item(),
-            })
+            # self.logger.log_agent({
+            #     "ppo_loss": loss.item(),
+            # })
         
         self.update_old()
     

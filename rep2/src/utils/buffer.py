@@ -10,7 +10,10 @@ class ReplayMemory:
         self.memory.append(self.Transition(*args))
 
     def sample(self, batch_size):
-        transitions = random.sample(self.memory, batch_size)
+        if batch_size > 0:
+            transitions = random.sample(self.memory, batch_size)
+        else:
+            transitions = self.memory
         batch = self.Transition(*zip(*transitions))
         return batch
         

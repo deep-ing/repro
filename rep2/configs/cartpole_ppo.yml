@@ -1,15 +1,11 @@
 # Training Config
-device: "cuda:0"
+device: "cuda:7"
 env: cartpole
 n_envs: 1
 max_training_steps: 100000
-# train_start_timestep: 1000
 max_episode_len: 200
 buffer_len: 10000
 batch_size: 800
-# learning_rate: 0.001
-# lr_decay: 0.95
-# lr_decay_freq: 2000
 lr_actor: 0.0003
 lr_critic: 0.001
 gamma: 0.99
@@ -17,26 +13,21 @@ len_history: 5
 random_action: false
 
 # Model (PPO) Config
-hidden_dim: &hidden_dim 10
+hidden_dim: &hidden_dim 64
 eps_clip: 0.25
-K_epochs: 80
+K_epochs: 40
+
 has_continuous_action_space: false
 action_std: 0.6
 action_std_decay_rate: 0.05
 min_action_std: 0.1
 action_std_decay_freq: 250000
-# target_update_freq: 500
 
 # Test
 eval_freq: 10000
 test_epsilon: 0.0
 test_max_episode_len: 200
 test_num_episodes: 100
-
-# # Random exploration
-# epsilon_init: 0.9
-# epsilon_final: 0.05
-# epsilon_max_timesteps: 50000
 
 # Logging / Saving
 log_freq: 100
