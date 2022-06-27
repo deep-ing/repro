@@ -67,8 +67,8 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
         buffer = ReplayMemory(flags.buffer_len, ('state', 'action', 'reward',  'done', 'logprob'))
     
     envs = [env_class() for _ in range(flags.n_envs)]
-    for i in range(len(envs)):
-        randomize(envs[i], domain_randomization_dict)
+    # for i in range(len(envs)):
+    #     randomize(envs[i], domain_randomization_dict)
     states = [envs[i].reset() for i in range(flags.n_envs)]
 
     # keep data for logging
@@ -116,7 +116,7 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
                 timesteps[i] = 0
                 num_episodes += 1
                 states[i] = envs[i].reset()
-                randomize(envs[i], domain_randomization_dict)
+                # randomize(envs[i], domain_randomization_dict)
             else:
                 states[i] = next_state
             

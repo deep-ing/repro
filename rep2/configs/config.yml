@@ -13,9 +13,9 @@ len_history: 5
 random_action: false
 
 # Domain randomization [domain_name, lower_bound, upper_bound, step_size] (lower, upper bounds are multipliers)
-# domain_randomization:
-#   - [masspole, 0.5, 1.51, 0.25]
-#   - [length, 0.5, 1.51, 0.25]
+domain_randomization:
+  - [m, 0.5, 1.51, 0.25]
+  - [l, 0.5, 1.51, 0.25]
 
 # Model (PPO) Config
 model_type: PPO
