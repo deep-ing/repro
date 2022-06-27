@@ -1,10 +1,10 @@
 import os
 import datetime
-from turtle import Pen
 
 import numpy as np
 import torch
 import gym
+import pybulletgym.envs
 
 from omegaconf import OmegaConf
 
@@ -52,6 +52,8 @@ def randomize(env, domain_randomization_dict):
     })
 
 def get_domain(env, keys):
+    if len(keys) <= 0:
+        return
     return np.array(env.get_simulator_parameters(keys), dtype=np.float32)
 
 def train(env_class, agent, domain_randomization_dict, flags, logger):
@@ -95,16 +97,16 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
             if flags.model_type == 'UP':
                 buffer.push(torch.tensor(states[i], device=flags.device).unsqueeze(0), \
                     torch.tensor(domain, device=flags.device).unsqueeze(0), \
-                    torch.tensor([action], device=flags.device), \
-                    torch.tensor([reward], device=flags.device), \
+                    torch.tensor(action, device=flags.device).unsqueeze(0), \
+                    torch.tensor(reward, device=flags.device).unsqueeze(0), \
                     done, \
-                    torch.tensor([logprob], device=flags.device))
+                    torch.tensor(logprob, device=flags.device).unsqueeze(0))
             else:    
                 buffer.push(torch.tensor(states[i], device=flags.device).unsqueeze(0), \
-                    torch.tensor([action], device=flags.device), \
-                    torch.tensor([reward], device=flags.device), \
+                    torch.tensor(action, device=flags.device).unsqueeze(0), \
+                    torch.tensor(reward, device=flags.device).unsqueeze(0), \
                     done, \
-                    torch.tensor([logprob], device=flags.device))
+                    torch.tensor(logprob, device=flags.device).unsqueeze(0))
 
             total_rewards[i] += reward
             timesteps[i] += 1
@@ -176,7 +178,7 @@ if __name__ == "__main__":
     env_class = {
         "cartpole": CartPoleEnv,
         "pendulum": PendulumEnv,
-        "CartPole-v1": lambda x=None : gym.make("CartPole-v1")
+        "hopper": lambda x=None : gym.make("HopperPyBulletEnv-v0")
     }[flags.env]
 
     domain_randomization_dict = {}
