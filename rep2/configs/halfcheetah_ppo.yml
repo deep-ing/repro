@@ -1,11 +1,11 @@
 # Training Config
 device: "cuda:7"
-env: walker
+env: halfcheetah
 n_envs: 1
 max_training_steps: 3000000
-max_episode_len: 1000
+max_episode_len: 1500
 buffer_len: 10000
-batch_size: 4000
+batch_size: 6000
 lr_actor: 0.0003
 lr_critic: 0.001
 gamma: 0.99

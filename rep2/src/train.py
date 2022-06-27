@@ -178,7 +178,9 @@ if __name__ == "__main__":
     env_class = {
         "cartpole": CartPoleEnv,
         "pendulum": PendulumEnv,
-        "hopper": lambda x=None : gym.make("HopperPyBulletEnv-v0")
+        "hopper": lambda x=None : gym.make("HopperPyBulletEnv-v0"),
+        "halfcheetah": lambda x=None : gym.make("HalfCheetahPyBulletEnv-v0"),
+        "walker": lambda x=None : gym.make("Walker2DPyBulletEnv-v0"),
     }[flags.env]
 
     domain_randomization_dict = {}
