@@ -2,7 +2,7 @@
 device: "cuda:7"
 env: cartpole
 n_envs: 1
-max_training_steps: 100000
+max_training_steps: 500000
 max_episode_len: 200
 buffer_len: 10000
 batch_size: 800
@@ -12,7 +12,13 @@ gamma: 0.99
 len_history: 5
 random_action: false
 
+# Domain randomization [domain_name, lower_bound, upper_bound, step_size] (lower, upper bounds are multipliers)
+domain_randomization:
+  - [masspole, 0.5, 1.51, 0.25]
+  - [length, 0.5, 1.51, 0.25]
+
 # Model (PPO) Config
+model_type: PPO
 hidden_dim: &hidden_dim 64
 eps_clip: 0.25
 K_epochs: 40

@@ -13,11 +13,12 @@ from utils.losses import (
 )
 from utils.construct_model import construct_nn_from_config
 
-class PPO(nn.Module):
-    def __init__(self, state_dim, action_dim, flags, logger=None):
-        super(PPO, self).__init__()
+class UP(nn.Module):
+    def __init__(self, state_dim, domain_dim, action_dim, flags, logger=None):
+        super(UP, self).__init__()
         
         self.state_dim = state_dim
+        self.domain_dim = domain_dim
         self.action_dim = action_dim
 
         self.flags = flags
@@ -33,11 +34,11 @@ class PPO(nn.Module):
             self.action_std = flags.action_std
             self.action_var = torch.full((action_dim,), flags.action_std * flags.action_std).to(flags.device)
 
-        self.actor = construct_nn_from_config(self.flags.actor, self.state_dim, self.action_dim).to(flags.device)
-        self.critic = construct_nn_from_config(self.flags.critic, self.state_dim, 1).to(flags.device)
+        self.actor = construct_nn_from_config(self.flags.actor, self.state_dim + self.domain_dim, self.action_dim).to(flags.device)
+        self.critic = construct_nn_from_config(self.flags.critic, self.state_dim + self.domain_dim, 1).to(flags.device)
 
-        self.actor_old = construct_nn_from_config(self.flags.actor, self.state_dim, self.action_dim).to(flags.device)
-        self.critic_old = construct_nn_from_config(self.flags.critic, self.state_dim, 1).to(flags.device)
+        self.actor_old = construct_nn_from_config(self.flags.actor, self.state_dim + self.domain_dim, self.action_dim).to(flags.device)
+        self.critic_old = construct_nn_from_config(self.flags.critic, self.state_dim + self.domain_dim, 1).to(flags.device)
         self.update_old()
 
         self.optimizer = torch.optim.Adam([
@@ -108,19 +109,24 @@ class PPO(nn.Module):
         
         return action.detach(), action_logprob.detach()
 
-    def select_action(self, state):
+    def select_action(self, state, domain):
         with torch.no_grad():
             state = torch.FloatTensor(state).to(self.flags.device)
+            domain = torch.FloatTensor(domain).to(self.flags.device)
+            state = torch.cat((state, domain), dim=-1)
             action, action_logprob = self.act(state)
 
         return action, action_logprob
         
     def learn(self, batch):
         states = torch.cat(batch.state)
+        domains = torch.cat(batch.domain)
         actions = torch.cat(batch.action)
         rewards = torch.cat(batch.reward)
         is_terminals = batch.done
         logprobs = torch.cat(batch.logprob)
+
+        states = torch.cat((states, domains), dim=-1)
 
         discounted_rewards = []
         discounted_reward = 0
