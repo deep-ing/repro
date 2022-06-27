@@ -36,10 +36,6 @@ class PPO(nn.Module):
         self.actor = construct_nn_from_config(self.flags.actor, self.state_dim, self.action_dim).to(flags.device)
         self.critic = construct_nn_from_config(self.flags.critic, self.state_dim, 1).to(flags.device)
 
-        self.actor_old = construct_nn_from_config(self.flags.actor, self.state_dim, self.action_dim).to(flags.device)
-        self.critic_old = construct_nn_from_config(self.flags.critic, self.state_dim, 1).to(flags.device)
-        self.update_old()
-
         self.optimizer = torch.optim.Adam([
             {'params': self.actor.parameters(), 'lr': flags.lr_actor},
             {'params': self.critic.parameters(), 'lr': flags.lr_critic},
@@ -96,11 +92,11 @@ class PPO(nn.Module):
 
     def act(self, state):
         if self.has_continuous_action_space:
-            action_mean = self.actor_old(state)
+            action_mean = self.actor(state)
             cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
             dist = MultivariateNormal(action_mean, cov_mat)
         else:
-            action_probs = self.actor_old(state)
+            action_probs = self.actor(state)
             dist = Categorical(action_probs)
 
         action = dist.sample()
@@ -165,20 +161,13 @@ class PPO(nn.Module):
             #     "ppo_loss": loss.item(),
             # })
         
-        self.update_old()
-    
-    def update_old(self):
-        self.actor_old.load_state_dict(self.actor.state_dict())
-        self.critic_old.load_state_dict(self.critic.state_dict())
-        
     def save(self, path):
         model_state_dicts = []
-        model_state_dicts.append(self.actor_old.state_dict())
-        model_state_dicts.append(self.critic_old.state_dict())
+        model_state_dicts.append(self.actor.state_dict())
+        model_state_dicts.append(self.critic.state_dict())
         torch.save(model_state_dicts, path)
         
     def load(self, path):
         model_state_dicts = torch.load(path)
         self.actor.load_state_dict(model_state_dicts[0])
         self.critic.load_state_dict(model_state_dicts[1])
-        self.update_old()

@@ -77,7 +77,6 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
     episodes_len = []
     num_samples = 0
     num_episodes = 0
-    target_update_count = 0
 
     for training_step in range(flags.max_training_steps):
         # Run Environments
@@ -127,9 +126,6 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
             batch = buffer.sample(batch_size=-1)
             agent.learn(batch)
             buffer.clear()
-
-            target_update_count += 1
-            print("[INFO] target is updated")
                 
             # if training_step % flags.lr_decay_freq == 0:
             #     agent.lr_scheduler.step()
@@ -146,7 +142,6 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
         if training_step % flags.log_freq == 0:
             info_dict = {
                 "num_samples": float(num_samples),
-                "target_update_count": float(target_update_count),
                 "num_episodes": float(num_episodes),
                 # "epsilon": float(agent.epsilon)
             }
