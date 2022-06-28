@@ -2,14 +2,14 @@
 ## Training device
 device: "cuda:7"
 ## Environment name / maximum episode length
-env: hopper
-max_episode_len: 1000
+env: pendulum
+max_episode_len: 200
 ## Data collection and optimization loop
 num_envs: 1
 iteration_size: 1024
 batch_size: 128
 num_epochs: 15
-max_training_steps: 3000000
+max_training_steps: 100000
 ## Handling of timesteps
 discount_factor: 0.99
 ## Optimizer
@@ -28,9 +28,9 @@ hidden_dim: &hidden_dim 64
 eps_clip: 0.20
 
 # Test
-eval_freq: 100000
-test_num_episodes: 10
-test_max_episode_len: 1000
+eval_freq: 10000
+test_num_episodes: 100
+test_max_episode_len: 200
 test_gui: true
 
 # Logging / Saving
