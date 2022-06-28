@@ -8,7 +8,7 @@ import pybulletgym.envs
 
 from omegaconf import OmegaConf
 
-from agent import PPO, UP
+from agent import PPO
 from envs import CartPoleEnv, PendulumEnv
 from utils.buffer import ReplayMemory
 from utils.logger import PlatformLogger
@@ -24,10 +24,8 @@ def eval(env_class, agent, domain_randomization_dict, flags, logger):
         domain = get_domain(env, domain_names)
         state = env.reset()
         for _ in range(flags.test_max_episode_len):
-            if flags.model_type == 'UP':
-                action, _ = agent.select_action(torch.from_numpy(state), torch.from_numpy(domain))
-            else:    
-                action, _ = agent.select_action(torch.from_numpy(state))
+            action, _ = agent.select_action(torch.from_numpy(state), torch.from_numpy(domain))
+            
             if flags.has_continuous_action_space:
                 state, reward, done, info = env.step(action.detach().cpu().numpy().flatten())
             else:
@@ -57,25 +55,22 @@ def get_domain(env, keys):
     return np.array(env.get_simulator_parameters(keys), dtype=np.float32)
 
 def train(env_class, agent, domain_randomization_dict, flags, logger):
-    if flags.n_envs > 1:
+    if flags.num_envs > 1:
         raise Exception
 
     domain_names = list(domain_randomization_dict.keys())
 
     #### TODO: implement multiple buffers to handle multiple envs
-    if flags.model_type == 'UP':
-        buffer = ReplayMemory(flags.buffer_len, ('state', 'domain', 'action', 'reward',  'done', 'logprob'))
-    else:
-        buffer = ReplayMemory(flags.buffer_len, ('state', 'action', 'reward',  'done', 'logprob'))
+    buffer = ReplayMemory(flags.iteration_size, ('state', 'domain', 'action', 'reward',  'done', 'logprob'))
     
-    envs = [env_class() for _ in range(flags.n_envs)]
+    envs = [env_class() for _ in range(flags.num_envs)]
     for i in range(len(envs)):
         randomize(envs[i], domain_randomization_dict)
-    states = [envs[i].reset() for i in range(flags.n_envs)]
+    states = [envs[i].reset() for i in range(flags.num_envs)]
 
     # keep data for logging
-    total_rewards = [0] * flags.n_envs
-    timesteps = [0] * flags.n_envs
+    total_rewards = [0] * flags.num_envs
+    timesteps = [0] * flags.num_envs
     returns = []
     episodes_len = []
     num_samples = 0
@@ -83,30 +78,20 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
 
     for training_step in range(flags.max_training_steps):
         # Run Environments
-        for i in range(flags.n_envs):
+        for i in range(flags.num_envs):
             domain = get_domain(envs[i], domain_names)
 
-            if flags.model_type == 'UP':
-                action, logprob = agent.select_action(torch.from_numpy(states[i]), torch.from_numpy(domain))
-            else:
-                action, logprob = agent.select_action(torch.from_numpy(states[i]))
+            action, logprob = agent.select_action(torch.from_numpy(states[i]), torch.from_numpy(domain))
             if flags.has_continuous_action_space:
                 next_state, reward, done, info = envs[i].step(action.detach().cpu().numpy().flatten())
             else:
                 next_state, reward, done, info = envs[i].step(action.item())
-            if flags.model_type == 'UP':
-                buffer.push(torch.tensor(states[i], device=flags.device).unsqueeze(0), \
-                    torch.tensor(domain, device=flags.device).unsqueeze(0), \
-                    torch.tensor(action, device=flags.device).unsqueeze(0), \
-                    torch.tensor(reward, device=flags.device).unsqueeze(0), \
-                    done, \
-                    torch.tensor(logprob, device=flags.device).unsqueeze(0))
-            else:    
-                buffer.push(torch.tensor(states[i], device=flags.device).unsqueeze(0), \
-                    torch.tensor(action, device=flags.device).unsqueeze(0), \
-                    torch.tensor(reward, device=flags.device).unsqueeze(0), \
-                    done, \
-                    torch.tensor(logprob, device=flags.device).unsqueeze(0))
+            buffer.push(torch.tensor(states[i], device=flags.device).unsqueeze(0), \
+                torch.tensor(domain, device=flags.device).unsqueeze(0), \
+                torch.tensor(action, device=flags.device).unsqueeze(0), \
+                torch.tensor(reward, device=flags.device).unsqueeze(0), \
+                done, \
+                torch.tensor(logprob, device=flags.device).unsqueeze(0))
 
             total_rewards[i] += reward
             timesteps[i] += 1
@@ -122,14 +107,14 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
             else:
                 states[i] = next_state
             
-        num_samples += flags.n_envs
+        num_samples += flags.num_envs
 
         # Learning from samples
-        if len(buffer) >= flags.batch_size:
+        if len(buffer) >= flags.iteration_size:
             batch = buffer.sample(batch_size=-1)
             agent.learn(batch)
             buffer.clear()
-                
+
             # if training_step % flags.lr_decay_freq == 0:
             #     agent.lr_scheduler.step()
             #     print("[INFO] Learning Rate is updated")
@@ -175,6 +160,7 @@ if __name__ == "__main__":
     OmegaConf.save(config=flags, f=os.path.join(RESULT_path, "config.yaml"))
     
     logger = PlatformLogger(RESULT_path)
+
     env_class = {
         "cartpole": CartPoleEnv,
         "pendulum": PendulumEnv,
@@ -191,14 +177,10 @@ if __name__ == "__main__":
             domain_randomization_dict.update({domain_name: random_range})
 
     dummy_env = env_class()
-    if flags.has_continuous_action_space:
-        if flags.model_type == 'UP':
-            agent = UP(dummy_env.observation_space.shape[0], len(domain_randomization_dict), dummy_env.action_space.shape[0], flags, logger=logger)
-        else:
-            agent = PPO(dummy_env.observation_space.shape[0], dummy_env.action_space.shape[0], flags, logger=logger)
-    else:
-        if flags.model_type == 'UP':
-            agent = UP(dummy_env.observation_space.shape[0], len(domain_randomization_dict), dummy_env.action_space.n, flags, logger=logger)
-        else:
-            agent = PPO(dummy_env.observation_space.shape[0], dummy_env.action_space.n, flags, logger=logger)
+    state_dim = dummy_env.observation_space.shape[0]
+    domain_dim = len(domain_randomization_dict)
+    action_dim = dummy_env.action_space.shape[0] if flags.has_continuous_action_space else dummy_env.action_space.n
+
+    agent = PPO(state_dim, domain_dim, action_dim, flags, logger)
+    
     train(env_class, agent, domain_randomization_dict, flags, logger)

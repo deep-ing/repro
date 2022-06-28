@@ -14,27 +14,28 @@ from utils.losses import (
 from utils.construct_model import construct_nn_from_config
 
 class PPO(nn.Module):
-    def __init__(self, state_dim, action_dim, flags, logger=None):
+    def __init__(self, state_dim, domain_dim, action_dim, flags, logger=None):
         super(PPO, self).__init__()
         
         self.state_dim = state_dim
+        self.domain_dim = domain_dim
         self.action_dim = action_dim
 
         self.flags = flags
         # self.logger = logger
 
-        self.gamma = flags.gamma
+        self.discount_factor = flags.discount_factor
         self.eps_clip = flags.eps_clip
-        self.K_epochs = flags.K_epochs
+        self.num_epochs = flags.num_epochs
 
         self.has_continuous_action_space = flags.has_continuous_action_space
 
         if self.has_continuous_action_space:
-            self.action_std = flags.action_std
-            self.action_var = torch.full((action_dim,), flags.action_std * flags.action_std).to(flags.device)
+            self.action_std = flags.init_action_std
+            self.action_var = torch.full((action_dim,), self.action_std * self.action_std).to(flags.device)
 
-        self.actor = construct_nn_from_config(self.flags.actor, self.state_dim, self.action_dim).to(flags.device)
-        self.critic = construct_nn_from_config(self.flags.critic, self.state_dim, 1).to(flags.device)
+        self.actor = construct_nn_from_config(self.flags.actor, self.state_dim + self.domain_dim, self.action_dim).to(flags.device)
+        self.critic = construct_nn_from_config(self.flags.critic, self.state_dim + self.domain_dim, 1).to(flags.device)
 
         self.optimizer = torch.optim.Adam([
             {'params': self.actor.parameters(), 'lr': flags.lr_actor},
@@ -104,26 +105,33 @@ class PPO(nn.Module):
         
         return action.detach(), action_logprob.detach()
 
-    def select_action(self, state):
+    def select_action(self, state, domain):
         with torch.no_grad():
             state = torch.FloatTensor(state).to(self.flags.device)
+            if self.flags.model_type == 'UP':
+                domain = torch.FloatTensor(domain).to(self.flags.device)
+                state = torch.cat((state, domain), dim=-1)
             action, action_logprob = self.act(state)
 
         return action, action_logprob
         
     def learn(self, batch):
         states = torch.cat(batch.state)
+        domains = torch.cat(batch.domain)
         actions = torch.cat(batch.action)
         rewards = torch.cat(batch.reward)
         is_terminals = batch.done
         logprobs = torch.cat(batch.logprob)
+
+        if self.flags.model_type == 'UP':
+            states = torch.cat((states, domains), dim=-1)
 
         discounted_rewards = []
         discounted_reward = 0
         for reward, is_terminal in zip(reversed(rewards), reversed(is_terminals)):
             if is_terminal:
                 discounted_reward = 0
-            discounted_reward = reward + (self.gamma * discounted_reward)
+            discounted_reward = reward + (self.discount_factor * discounted_reward)
             discounted_rewards.insert(0, discounted_reward)
 
         rewards = torch.tensor(discounted_rewards, dtype=torch.float32).to(self.flags.device)
@@ -133,7 +141,7 @@ class PPO(nn.Module):
         old_actions = actions.detach()
         old_logprobs = logprobs.detach()
 
-        for _ in range(self.K_epochs):
+        for _ in range(self.num_epochs):
             # Evaluate old states and actions
             logprobs, state_values, dist_entropy = self.evaluate(old_states, old_actions)
 

@@ -1,46 +1,48 @@
 # Training Config
+## Training device
 device: "cuda:7"
+## Environment name / maximum episode length
 env: cartpole
-n_envs: 1
-max_training_steps: 500000
 max_episode_len: 200
-buffer_len: 10000
-batch_size: 800
+## Data collection and optimization loop
+num_envs: 1
+iteration_size: 1024
+batch_size: 128
+num_epochs: 15
+max_training_steps: 100000
+## Handling of timesteps
+discount_factor: 0.99
+## Optimizer
 lr_actor: 0.0003
 lr_critic: 0.001
-gamma: 0.99
-len_history: 5
-random_action: false
-
-# Domain randomization [domain_name, lower_bound, upper_bound, step_size] (lower, upper bounds are multipliers)
-domain_randomization:
-  - [masspole, 0.5, 1.51, 0.25]
-  - [length, 0.5, 1.51, 0.25]
-
-# Model (PPO) Config
+## Action distribution
+has_continuous_action_space: false
+init_action_std: 0.6
+min_action_std: 0.1
+action_std_decay_rate: 0.05
+action_std_decay_freq: 250000
+# Model structure config
 model_type: PPO
 hidden_dim: &hidden_dim 64
-eps_clip: 0.25
-K_epochs: 40
-
-has_continuous_action_space: false
-action_std: 0.6
-action_std_decay_rate: 0.05
-min_action_std: 0.1
-action_std_decay_freq: 250000
+# PPO config
+eps_clip: 0.20
 
 # Test
 eval_freq: 10000
-test_epsilon: 0.0
-test_max_episode_len: 200
 test_num_episodes: 100
+test_max_episode_len: 200
 test_gui: true
 
 # Logging / Saving
-log_freq: 100
+log_freq: 1000
 checkpoint_num: 10
 
-# --- Network Candidates ----
+# Domain randomization [domain_name, lower_bound, upper_bound, step_size] (lower, upper bounds are multipliers)
+# domain_randomization:
+#   - [masspole, 0.5, 1.51, 0.25]
+#   - [length, 0.5, 1.51, 0.25]
+
+# --- Model Structure ----
 act: &act Tanh
 actor_net: &actor_net
   - [Linear, auto, *hidden_dim, {}]
@@ -48,7 +50,6 @@ actor_net: &actor_net
   - [Linear, *hidden_dim, *hidden_dim, {}]
   - *act
   - [Linear, *hidden_dim, auto, {}]
-  - [Softmax, {dim: -1}]
 critic_net: &critic_net
   - [Linear, auto, *hidden_dim, {}]
   - *act
