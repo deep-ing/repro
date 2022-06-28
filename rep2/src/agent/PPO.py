@@ -107,9 +107,11 @@ class PPO(nn.Module):
 
     def select_action(self, state, domain):
         with torch.no_grad():
-            state = torch.FloatTensor(state).to(self.flags.device)
+            # state = torch.FloatTensor(state).to(self.flags.device)
+            state = state.to(self.flags.device)
             if self.flags.model_type == 'UP':
-                domain = torch.FloatTensor(domain).to(self.flags.device)
+                # domain = torch.FloatTensor(domain).to(self.flags.device)
+                domain = domain.to(self.flags.device)
                 state = torch.cat((state, domain), dim=-1)
             action, action_logprob = self.act(state)
 

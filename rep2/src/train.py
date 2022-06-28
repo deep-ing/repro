@@ -50,8 +50,8 @@ def randomize(env, domain_randomization_dict):
     })
 
 def get_domain(env, keys):
-    if len(keys) <= 0:
-        return
+    # if len(keys) <= 0:
+    #     return
     return np.array(env.get_simulator_parameters(keys), dtype=np.float32)
 
 def train(env_class, agent, domain_randomization_dict, flags, logger):
@@ -88,10 +88,10 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
                 next_state, reward, done, info = envs[i].step(action.item())
             buffer.push(torch.tensor(states[i], device=flags.device).unsqueeze(0), \
                 torch.tensor(domain, device=flags.device).unsqueeze(0), \
-                torch.tensor(action, device=flags.device).unsqueeze(0), \
+                action.unsqueeze(0), \
                 torch.tensor(reward, device=flags.device).unsqueeze(0), \
                 done, \
-                torch.tensor(logprob, device=flags.device).unsqueeze(0))
+                logprob.unsqueeze(0))
 
             total_rewards[i] += reward
             timesteps[i] += 1

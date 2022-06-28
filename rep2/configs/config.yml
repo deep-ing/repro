@@ -2,7 +2,7 @@
 ## Training device
 device: "cuda:7"
 ## Environment name / maximum episode length
-env: pendulum
+env: cartpole
 max_episode_len: 200
 ## Data collection and optimization loop
 num_envs: 1
@@ -16,7 +16,7 @@ discount_factor: 0.99
 lr_actor: 0.0003
 lr_critic: 0.001
 ## Action distribution
-has_continuous_action_space: true
+has_continuous_action_space: false
 init_action_std: 0.6
 min_action_std: 0.1
 action_std_decay_rate: 0.05
@@ -39,8 +39,8 @@ checkpoint_num: 10
 
 # Domain randomization [domain_name, lower_bound, upper_bound, step_size] (lower, upper bounds are multipliers)
 # domain_randomization:
-#   - [m, 0.5, 1.51, 0.25]
-#   - [l, 0.5, 1.51, 0.25]
+#   - [masspole, 0.5, 1.51, 0.25]
+#   - [length, 0.5, 1.51, 0.25]
 
 # --- Model Structure ----
 act: &act Tanh
@@ -50,6 +50,7 @@ actor_net: &actor_net
   - [Linear, *hidden_dim, *hidden_dim, {}]
   - *act
   - [Linear, *hidden_dim, auto, {}]
+  - [Softmax, {dim: -1}]
 critic_net: &critic_net
   - [Linear, auto, *hidden_dim, {}]
   - *act

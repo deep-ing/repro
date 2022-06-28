@@ -50,6 +50,7 @@ actor_net: &actor_net
   - [Linear, *hidden_dim, *hidden_dim, {}]
   - *act
   - [Linear, *hidden_dim, auto, {}]
+  - [Softmax, {dim: -1}]
 critic_net: &critic_net
   - [Linear, auto, *hidden_dim, {}]
   - *act
