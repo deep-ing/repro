@@ -34,6 +34,7 @@ eval_freq: 10000
 test_epsilon: 0.0
 test_max_episode_len: 200
 test_num_episodes: 100
+test_gui: true
 
 # Logging / Saving
 log_freq: 100

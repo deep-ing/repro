@@ -1,11 +1,11 @@
 # Training Config
 device: "cuda:7"
-env: walker
+env: hopper
 n_envs: 1
 max_training_steps: 3000000
 max_episode_len: 1000
 buffer_len: 10000
-batch_size: 4000
+batch_size: 4096
 lr_actor: 0.0003
 lr_critic: 0.001
 gamma: 0.99
@@ -21,7 +21,7 @@ random_action: false
 model_type: PPO
 hidden_dim: &hidden_dim 64
 eps_clip: 0.20
-K_epochs: 80
+K_epochs: 15
 
 has_continuous_action_space: true
 action_std: 0.6
@@ -34,6 +34,7 @@ eval_freq: 100000
 test_epsilon: 0.0
 test_max_episode_len: 1000
 test_num_episodes: 10
+test_gui: true
 
 # Logging / Saving
 log_freq: 1000
