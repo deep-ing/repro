@@ -144,32 +144,38 @@ class PPO(nn.Module):
         old_logprobs = logprobs.detach()
 
         for _ in range(self.num_epochs):
-            # Evaluate old states and actions
-            logprobs, state_values, dist_entropy = self.evaluate(old_states, old_actions)
+            for j in range(self.flags.iteration_size // self.flags.batch_size):
+                batch_rewards = rewards[j*self.flags.batch_size:(j+1)*self.flags.batch_size]
+                batch_old_states = old_states[j*self.flags.batch_size:(j+1)*self.flags.batch_size]
+                batch_old_actions = old_actions[j*self.flags.batch_size:(j+1)*self.flags.batch_size]
+                batch_old_logprobs = old_logprobs[j*self.flags.batch_size:(j+1)*self.flags.batch_size]
 
-            # Match state_values dim with rewards
-            state_values = torch.squeeze(state_values)
+                # Evaluate old states and actions
+                logprobs, state_values, dist_entropy = self.evaluate(batch_old_states, batch_old_actions)
 
-            # Ratio of pi_theta:pi_theta_old
-            ratios = torch.exp(logprobs - old_logprobs.detach())
+                # Match state_values dim with rewards
+                state_values = torch.squeeze(state_values)
 
-            # Compute surrogate loss
-            advantages = rewards - state_values.detach()
-            surr1 = ratios * advantages
-            surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
+                # Ratio of pi_theta:pi_theta_old
+                ratios = torch.exp(logprobs - batch_old_logprobs.detach())
 
-            # Final loss of clipped PPO objective
-            loss = -torch.min(surr1, surr2) + 0.5*self.Mseloss(state_values, rewards) - 0.01*dist_entropy
-            loss = loss.mean()
+                # Compute surrogate loss
+                advantages = batch_rewards - state_values.detach()
+                surr1 = ratios * advantages
+                surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
 
-            # Update parameters
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+                # Final loss of clipped PPO objective
+                loss = -torch.min(surr1, surr2) + 0.5*self.Mseloss(state_values, batch_rewards) - 0.01*dist_entropy
+                loss = loss.mean()
 
-            # self.logger.log_agent({
-            #     "ppo_loss": loss.item(),
-            # })
+                # Update parameters
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+                # self.logger.log_agent({
+                #     "ppo_loss": loss.item(),
+                # })
         
     def save(self, path):
         model_state_dicts = []
