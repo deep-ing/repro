@@ -151,7 +151,6 @@ class PendulumEnv(gym.Env):
         return_info: bool = False,
         options: Optional[dict] = None
     ):
-        super().reset(seed=seed)
         high = np.array([np.pi, 1])
         self.state = self.np_random.uniform(low=-high, high=high)
         self.last_u = None

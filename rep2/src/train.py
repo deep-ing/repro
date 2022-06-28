@@ -1,16 +1,20 @@
 import os
 import datetime
+from collections import deque
 
+import gym
 import numpy as np
 import torch
-import gym
-import pybulletgym.envs
 
 from omegaconf import OmegaConf
 
 from agent import PPO
+from agent.envs import make_vec_envs_custom
+from agent.utils import update_linear_schedule
+from agent.storage import RolloutStorage
+
 from envs import CartPoleEnv, PendulumEnv
-from utils.buffer import ReplayMemory
+# from utils.buffer import ReplayMemory
 from utils.logger import PlatformLogger
 
 def eval(env_class, agent, domain_randomization_dict, flags, logger):
@@ -22,14 +26,19 @@ def eval(env_class, agent, domain_randomization_dict, flags, logger):
         done = False
         randomize(env, domain_randomization_dict)
         domain = get_domain(env, domain_names)
-        state = env.reset()
+
+        obs = env.reset()
+        eval_recurrent_hidden_states = torch.zeros(1, agent.actor_critic.recurrent_hidden_state_size, device=flags.device)
+        eval_masks = torch.zeros(1, 1, device=flags.device)
         for _ in range(flags.test_max_episode_len):
-            action, _ = agent.select_action(torch.from_numpy(state), torch.from_numpy(domain))
+            with torch.no_grad():
+                value, action, action_log_prob, recurrent_hidden_states = agent.actor_critic.act(
+                    torch.from_numpy(obs).unsqueeze(0).to(flags.device),
+                    eval_recurrent_hidden_states,
+                    eval_masks,
+                    deterministic=True)
             
-            if flags.has_continuous_action_space:
-                state, reward, done, info = env.step(action.detach().cpu().numpy().flatten())
-            else:
-                state, reward, done, info = env.step(action.item())
+            obs, reward, done, infos = env.step(action.detach().cpu().numpy().flatten())
             total_rewards[i] += reward
             
             if done:
@@ -50,101 +59,104 @@ def randomize(env, domain_randomization_dict):
     })
 
 def get_domain(env, keys):
-    # if len(keys) <= 0:
-    #     return
+    if len(keys) <= 0:
+        return np.array([])
     return np.array(env.get_simulator_parameters(keys), dtype=np.float32)
 
 def train(env_class, agent, domain_randomization_dict, flags, logger):
-    if flags.num_envs > 1:
-        raise Exception
+    envs = make_vec_envs_custom(env_class, flags.seed, flags.num_envs, flags.discount_factor, None, flags.device, False)
 
     domain_names = list(domain_randomization_dict.keys())
 
-    #### TODO: implement multiple buffers to handle multiple envs
-    buffer = ReplayMemory(flags.iteration_size, ('state', 'domain', 'action', 'reward',  'done', 'logprob'))
-    
-    envs = [env_class() for _ in range(flags.num_envs)]
-    for i in range(len(envs)):
-        randomize(envs[i], domain_randomization_dict)
-    states = [envs[i].reset() for i in range(flags.num_envs)]
+    rollouts = RolloutStorage(flags.num_steps, flags.num_envs, envs.observation_space.shape, envs.action_space, agent.actor_critic.recurrent_hidden_state_size)
+
+    obs = envs.reset()
+    rollouts.obs[0].copy_(obs)
+    rollouts.to(flags.device)
 
     # keep data for logging
     total_rewards = [0] * flags.num_envs
     timesteps = [0] * flags.num_envs
-    returns = []
-    episodes_len = []
+    episode_rewards = deque(maxlen=10)
+    episode_len = deque(maxlen=10)
     num_samples = 0
     num_episodes = 0
 
-    for training_step in range(flags.max_training_steps):
-        # Run Environments
-        for i in range(flags.num_envs):
-            domain = get_domain(envs[i], domain_names)
+    num_updates = flags.max_training_steps // flags.num_steps // flags.num_envs
+    for j in range(num_updates):
+        if flags.use_linear_lr_decay:
+            update_linear_schedule(agent.optimizer, j, num_updates, flags.lr)
 
-            action, logprob = agent.select_action(torch.from_numpy(states[i]), torch.from_numpy(domain))
-            if flags.has_continuous_action_space:
-                next_state, reward, done, info = envs[i].step(action.detach().cpu().numpy().flatten())
-            else:
-                next_state, reward, done, info = envs[i].step(action.item())
-            buffer.push(torch.tensor(states[i], device=flags.device).unsqueeze(0), \
-                torch.tensor(domain, device=flags.device).unsqueeze(0), \
-                action.unsqueeze(0), \
-                torch.tensor(reward, device=flags.device).unsqueeze(0), \
-                done, \
-                logprob.unsqueeze(0))
+        # Collect data
+        for step in range(flags.num_steps):
+            with torch.no_grad():
+                value, action, action_log_prob, recurrent_hidden_states = agent.actor_critic.act(
+                    rollouts.obs[step], rollouts.recurrent_hidden_states[step],
+                    rollouts.masks[step])
 
-            total_rewards[i] += reward
-            timesteps[i] += 1
+            obs, reward, done, infos = envs.step(action)
 
-            if done or timesteps[i] >= flags.max_episode_len:
-                returns.append(total_rewards[i])
-                episodes_len.append(timesteps[i])
-                total_rewards[i] = 0
-                timesteps[i] = 0
-                num_episodes += 1
-                states[i] = envs[i].reset()
-                randomize(envs[i], domain_randomization_dict)
-            else:
-                states[i] = next_state
-            
-        num_samples += flags.num_envs
+            masks = torch.FloatTensor(
+                [[0.0] if done_ else [1.0] for done_ in done])
+            bad_masks = torch.FloatTensor(
+                [[0.0] if 'bad_transition' in info.keys() else [1.0]
+                 for info in infos])
+            rollouts.insert(obs, recurrent_hidden_states, action,
+                            action_log_prob, value, reward, masks, bad_masks)
 
-        # Learning from samples
-        if len(buffer) >= flags.iteration_size:
-            batch = buffer.sample(batch_size=-1)
-            agent.learn(batch)
-            buffer.clear()
+            for i in range(flags.num_envs):
+                # domain = get_domain(envs[i], domain_names)
 
-            # if training_step % flags.lr_decay_freq == 0:
-            #     agent.lr_scheduler.step()
-            #     print("[INFO] Learning Rate is updated")
-                
-        if training_step % flags.eval_freq == 0:
-            eval(env_class, agent, domain_randomization_dict, flags, logger)
-            print("[INFO] Evaluation is done")
+                total_rewards[i] += reward[i].item()
+                timesteps[i] += 1
 
-        if flags.has_continuous_action_space and training_step % flags.action_std_decay_freq == 0:
-            agent.decay_action_std(flags.action_std_decay_rate, flags.min_action_std)
-                
+                if done[i] or timesteps[i] >= flags.max_episode_len:
+                    episode_rewards.append(total_rewards[i])
+                    episode_len.append(timesteps[i])
+                    total_rewards[i] = 0
+                    timesteps[i] = 0
+                    num_episodes += 1
+                    obs = envs.reset() #### TODO: need to reset a single env only.
+                    # randomize(envs[i], domain_randomization_dict)
+
+        num_samples += flags.num_envs*flags.num_steps
+
+        # Compute returns
+        with torch.no_grad():
+            next_value = agent.actor_critic.get_value(
+                rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
+                rollouts.masks[-1]).detach()
+
+        rollouts.compute_returns(next_value, flags.use_gae, flags.discount_factor,
+                                flags.gae_lambda, flags.use_proper_time_limits)
+
+        # Update model
+        value_loss, action_loss, dist_entropy = agent.update(rollouts)
+
+        rollouts.after_update()
+
+        # Save model
+        if j % flags.save_freq == 0:
+            agent.save(os.path.join(logger.result_path, f"checkpoint_{j}.tar"))
+            print("[INFO] Checkpoint is saved")
+
         # Logging
-        if training_step % flags.log_freq == 0:
+        if j % flags.log_freq == 0:
             info_dict = {
                 "num_samples": float(num_samples),
                 "num_episodes": float(num_episodes),
-                # "epsilon": float(agent.epsilon)
             }
-            if len(returns) > 0:
-                info_dict.update({"episode_return_mean": sum(returns) / len(returns)})
-                returns = []
-            if len(episodes_len) > 0:
-                info_dict.update({"episodes_len_mean": sum(episodes_len) / len(episodes_len)})
-                episodes_len = []
+            if len(episode_rewards) > 0:
+                info_dict.update({"episode_return_mean": np.mean(episode_rewards)})
+            if len(episode_len) > 0:
+                info_dict.update({"episode_len_mean": np.mean(episode_len)})
             logger.log_iteration(info_dict)
-            
-        if training_step % (flags.max_training_steps // flags.checkpoint_num) == 0:
-            agent.save(os.path.join(logger.result_path, f"checkpoint_{training_step}.tar"))
-            print("[INFO] Checkpoint is saved")
-            
+
+        # Evaluation
+        if j % flags.eval_freq == 0:
+            eval(env_class, agent, domain_randomization_dict, flags, logger)
+            print("[INFO] Evaluation is done")
+   
     print("Train is Finished!")
     agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
                 
@@ -160,6 +172,12 @@ if __name__ == "__main__":
     OmegaConf.save(config=flags, f=os.path.join(RESULT_path, "config.yaml"))
     
     logger = PlatformLogger(RESULT_path)
+
+    torch.manual_seed(flags.seed)
+    torch.cuda.manual_seed_all(flags.seed)
+    np.random.seed(flags.seed)
+
+    torch.set_num_threads(1)
 
     env_class = {
         "cartpole": CartPoleEnv,
@@ -177,10 +195,7 @@ if __name__ == "__main__":
             domain_randomization_dict.update({domain_name: random_range})
 
     dummy_env = env_class()
-    state_dim = dummy_env.observation_space.shape[0]
     domain_dim = len(domain_randomization_dict)
-    action_dim = dummy_env.action_space.shape[0] if flags.has_continuous_action_space else dummy_env.action_space.n
-
-    agent = PPO(state_dim, domain_dim, action_dim, flags, logger)
+    agent = PPO(dummy_env.observation_space, dummy_env.action_space, domain_dim, flags)
     
     train(env_class, agent, domain_randomization_dict, flags, logger)

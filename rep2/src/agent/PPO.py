@@ -1,189 +1,113 @@
-# reference: https://github.com/nikhilbarhate99/PPO-PyTorch/blob/master/PPO.py
+# reference: https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/master/a2c_ppo_acktr/algo/ppo.py
 
 import torch
 import torch.nn as nn
-from torch.distributions import MultivariateNormal
-from torch.distributions import Categorical
+import torch.optim as optim
 
-import numpy as np
+from .model import Policy
 
-from utils.losses import (
-    compute_model_free_loss,
-    compute_system_identification_loss,
-)
-from utils.construct_model import construct_nn_from_config
+# from utils.losses import (
+#     compute_model_free_loss,
+#     compute_system_identification_loss,
+# )
+# from utils.construct_model import construct_nn_from_config
 
 class PPO(nn.Module):
-    def __init__(self, state_dim, domain_dim, action_dim, flags, logger=None):
+    def __init__(self, obs_space, action_space, domain_dim, flags):
         super(PPO, self).__init__()
-        
-        self.state_dim = state_dim
+
+        self.obs_space = obs_space
+        self.action_space = action_space
         self.domain_dim = domain_dim
-        self.action_dim = action_dim
+
+        self.actor_critic = Policy(obs_space.shape, action_space, base_kwargs={'recurrent': flags.use_recurrent})
+        self.actor_critic.to(flags.device)
+
+        self.clip_param = flags.clip_param
+        self.ppo_epoch = flags.ppo_epoch
+        self.num_mini_batch = flags.num_mini_batch
+
+        self.value_loss_coef = flags.value_loss_coef
+        self.entropy_coef = flags.entropy_coef
+
+        self.max_grad_norm = flags.max_grad_norm
+        self.use_clipped_value_loss = flags.use_clipped_value_loss
 
         self.flags = flags
-        # self.logger = logger
 
-        self.discount_factor = flags.discount_factor
-        self.eps_clip = flags.eps_clip
-        self.num_epochs = flags.num_epochs
+        self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=flags.lr)
 
-        self.has_continuous_action_space = flags.has_continuous_action_space
-
-        if self.has_continuous_action_space:
-            self.action_std = flags.init_action_std
-            self.action_var = torch.full((action_dim,), self.action_std * self.action_std).to(flags.device)
-
-        self.actor = construct_nn_from_config(self.flags.actor, self.state_dim + self.domain_dim, self.action_dim).to(flags.device)
-        self.critic = construct_nn_from_config(self.flags.critic, self.state_dim + self.domain_dim, 1).to(flags.device)
-
-        self.optimizer = torch.optim.Adam([
-            {'params': self.actor.parameters(), 'lr': flags.lr_actor},
-            {'params': self.critic.parameters(), 'lr': flags.lr_critic},
-        ])
-
-        # self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.flags.lr_decay)
-
-        self.Mseloss = nn.MSELoss()
+        self.flags = flags
     
-    def evaluate(self, state, action):
-        if self.has_continuous_action_space:
-            action_mean = self.actor(state)
-            
-            action_var = self.action_var.expand_as(action_mean)
-            cov_mat = torch.diag_embed(action_var).to(self.flags.device)
-            dist = MultivariateNormal(action_mean, cov_mat)
-            
-            # For Single Action Environments.
-            if self.action_dim == 1:
-                action = action.reshape(-1, self.action_dim)
-        else:
-            action_probs = self.actor(state)
-            dist = Categorical(action_probs)
-        action_logprobs = dist.log_prob(action)
-        dist_entropy = dist.entropy()
-        state_values = self.critic(state)
-        
-        return action_logprobs, state_values, dist_entropy
-    
-    def set_action_std(self, new_action_std):
-        if self.has_continuous_action_space:
-            self.action_std = new_action_std
-            self.action_var = torch.full((self.action_dim,), new_action_std * new_action_std).to(self.flags.device)
-        else:
-            print("--------------------------------------------------------------------------------------------")
-            print("WARNING : Calling PPO::set_action_std() on discrete action space policy")
-            print("--------------------------------------------------------------------------------------------")
+    def update(self, rollouts):
+        advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
+        advantages = (advantages - advantages.mean()) / (
+            advantages.std() + 1e-5)
 
-    def decay_action_std(self, action_std_decay_rate, min_action_std):
-        print("--------------------------------------------------------------------------------------------")
-        if self.has_continuous_action_space:
-            self.action_std = self.action_std - action_std_decay_rate
-            self.action_std = round(self.action_std, 4)
-            if (self.action_std <= min_action_std):
-                self.action_std = min_action_std
-                print("setting actor output action_std to min_action_std : ", self.action_std)
+        value_loss_epoch = 0
+        action_loss_epoch = 0
+        dist_entropy_epoch = 0
+
+        for e in range(self.ppo_epoch):
+            if self.actor_critic.is_recurrent:
+                data_generator = rollouts.recurrent_generator(
+                    advantages, self.num_mini_batch)
             else:
-                print("setting actor output action_std to : ", self.action_std)
-            self.set_action_std(self.action_std)
+                data_generator = rollouts.feed_forward_generator(
+                    advantages, self.num_mini_batch)
 
-        else:
-            print("WARNING : Calling PPO::decay_action_std() on discrete action space policy")
-        print("--------------------------------------------------------------------------------------------")
+            for sample in data_generator:
+                obs_batch, recurrent_hidden_states_batch, actions_batch, \
+                   value_preds_batch, return_batch, masks_batch, old_action_log_probs_batch, \
+                        adv_targ = sample
 
-    def act(self, state):
-        if self.has_continuous_action_space:
-            action_mean = self.actor(state)
-            cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
-            dist = MultivariateNormal(action_mean, cov_mat)
-        else:
-            action_probs = self.actor(state)
-            dist = Categorical(action_probs)
+                # Reshape to do in a single forward pass for all steps
+                values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
+                    obs_batch, recurrent_hidden_states_batch, masks_batch,
+                    actions_batch)
 
-        action = dist.sample()
-        action_logprob = dist.log_prob(action)
-        
-        return action.detach(), action_logprob.detach()
+                ratio = torch.exp(action_log_probs -
+                                  old_action_log_probs_batch)
+                surr1 = ratio * adv_targ
+                surr2 = torch.clamp(ratio, 1.0 - self.clip_param,
+                                    1.0 + self.clip_param) * adv_targ
+                action_loss = -torch.min(surr1, surr2).mean()
 
-    def select_action(self, state, domain):
-        with torch.no_grad():
-            # state = torch.FloatTensor(state).to(self.flags.device)
-            state = state.to(self.flags.device)
-            if self.flags.model_type == 'UP':
-                # domain = torch.FloatTensor(domain).to(self.flags.device)
-                domain = domain.to(self.flags.device)
-                state = torch.cat((state, domain), dim=-1)
-            action, action_logprob = self.act(state)
+                if self.use_clipped_value_loss:
+                    value_pred_clipped = value_preds_batch + \
+                        (values - value_preds_batch).clamp(-self.clip_param, self.clip_param)
+                    value_losses = (values - return_batch).pow(2)
+                    value_losses_clipped = (
+                        value_pred_clipped - return_batch).pow(2)
+                    value_loss = 0.5 * torch.max(value_losses,
+                                                 value_losses_clipped).mean()
+                else:
+                    value_loss = 0.5 * (return_batch - values).pow(2).mean()
 
-        return action, action_logprob
-        
-    def learn(self, batch):
-        states = torch.cat(batch.state)
-        domains = torch.cat(batch.domain)
-        actions = torch.cat(batch.action)
-        rewards = torch.cat(batch.reward)
-        is_terminals = batch.done
-        logprobs = torch.cat(batch.logprob)
-
-        if self.flags.model_type == 'UP':
-            states = torch.cat((states, domains), dim=-1)
-
-        discounted_rewards = []
-        discounted_reward = 0
-        for reward, is_terminal in zip(reversed(rewards), reversed(is_terminals)):
-            if is_terminal:
-                discounted_reward = 0
-            discounted_reward = reward + (self.discount_factor * discounted_reward)
-            discounted_rewards.insert(0, discounted_reward)
-
-        rewards = torch.tensor(discounted_rewards, dtype=torch.float32).to(self.flags.device)
-        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
-
-        old_states = states.detach()
-        old_actions = actions.detach()
-        old_logprobs = logprobs.detach()
-
-        for _ in range(self.num_epochs):
-            for j in range(self.flags.iteration_size // self.flags.batch_size):
-                batch_rewards = rewards[j*self.flags.batch_size:(j+1)*self.flags.batch_size]
-                batch_old_states = old_states[j*self.flags.batch_size:(j+1)*self.flags.batch_size]
-                batch_old_actions = old_actions[j*self.flags.batch_size:(j+1)*self.flags.batch_size]
-                batch_old_logprobs = old_logprobs[j*self.flags.batch_size:(j+1)*self.flags.batch_size]
-
-                # Evaluate old states and actions
-                logprobs, state_values, dist_entropy = self.evaluate(batch_old_states, batch_old_actions)
-
-                # Match state_values dim with rewards
-                state_values = torch.squeeze(state_values)
-
-                # Ratio of pi_theta:pi_theta_old
-                ratios = torch.exp(logprobs - batch_old_logprobs.detach())
-
-                # Compute surrogate loss
-                advantages = batch_rewards - state_values.detach()
-                surr1 = ratios * advantages
-                surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
-
-                # Final loss of clipped PPO objective
-                loss = -torch.min(surr1, surr2) + 0.5*self.Mseloss(state_values, batch_rewards) - 0.01*dist_entropy
-                loss = loss.mean()
-
-                # Update parameters
                 self.optimizer.zero_grad()
-                loss.backward()
+                (value_loss * self.value_loss_coef + action_loss -
+                 dist_entropy * self.entropy_coef).backward()
+                nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
+                                         self.max_grad_norm)
                 self.optimizer.step()
 
-                # self.logger.log_agent({
-                #     "ppo_loss": loss.item(),
-                # })
+                value_loss_epoch += value_loss.item()
+                action_loss_epoch += action_loss.item()
+                dist_entropy_epoch += dist_entropy.item()
+
+        num_updates = self.ppo_epoch * self.num_mini_batch
+
+        value_loss_epoch /= num_updates
+        action_loss_epoch /= num_updates
+        dist_entropy_epoch /= num_updates
+
+        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
         
     def save(self, path):
         model_state_dicts = []
-        model_state_dicts.append(self.actor.state_dict())
-        model_state_dicts.append(self.critic.state_dict())
+        model_state_dicts.append(self.actor_critic.state_dict())
         torch.save(model_state_dicts, path)
         
     def load(self, path):
         model_state_dicts = torch.load(path)
-        self.actor.load_state_dict(model_state_dicts[0])
-        self.critic.load_state_dict(model_state_dicts[1])
+        self.actor_critic.load_state_dict(model_state_dicts[0])

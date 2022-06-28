@@ -14,7 +14,7 @@ from gym.error import DependencyNotInstalled
 # from gym.utils.renderer import Renderer
 
 
-class CartPoleEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
+class CartPoleEnv(gym.Env):
     """
     ### Description
 
@@ -206,7 +206,6 @@ class CartPoleEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         return_info: bool = False,
         options: Optional[dict] = None,
     ):
-        super().reset(seed=seed)
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
         # self.renderer.reset()
