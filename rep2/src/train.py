@@ -95,7 +95,7 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
                     rollouts.masks[step])
 
             obs, reward, done, infos = envs.step(action)
-
+            
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
             bad_masks = torch.FloatTensor(

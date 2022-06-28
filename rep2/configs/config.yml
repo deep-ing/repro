@@ -1,6 +1,6 @@
 # Training Config
 ## Training device
-device: "cuda:5"
+device: "cuda:7"
 ## Environment name / maximum episode length
 env: hopper
 max_episode_len: 1000
@@ -35,7 +35,7 @@ eval_freq: 50
 test_num_episodes: 10
 test_max_episode_len: 1000
 test_gui: true
-model_path: /data2/cwkang/RL/git/repro/rep2/results/22-06-28/21-07-18/checkpoint_450.tar
+model_path: /data2/cwkang/RL/git/repro/rep2/results/22-06-28/23-23-24/checkpoint_300.tar
 
 # Logging / Saving
 log_freq: 1
