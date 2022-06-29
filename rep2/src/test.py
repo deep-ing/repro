@@ -54,7 +54,7 @@ def test_agent(env_name, agent, flags):
                 device=flags.device)
 
             if flags.test_gui:
-                time.sleep(0.02)
+                time.sleep(1/60)
                 env.render(mode='human')
 
             episode_rewards[i] += reward.item()

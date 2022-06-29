@@ -3,11 +3,11 @@
 device: "cpu"
 ## Environment name / maximum episode length
 env_name: Walker2DPyBulletEnv-v0
-max_episode_len: 1000000
+max_episode_len: 1000
 ## Data collection and optimization loop
 seed: 0
 num_envs: 1
-num_steps: 2048
+num_steps: 4096
 num_mini_batch: 32
 ppo_epoch: 10
 max_training_steps: 1000000

@@ -95,7 +95,8 @@ def make_vec_envs(env_name,
     ]
 
     if len(envs) > 1:
-        envs = SubprocVecEnv(envs)
+        # envs = SubprocVecEnv(envs) #### disabled due to multiprocessing errors
+        envs = DummyVecEnv(envs)
     else:
         envs = DummyVecEnv(envs)
 

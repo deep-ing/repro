@@ -3,43 +3,43 @@
 device: "cpu"
 ## Environment name / maximum episode length
 env_name: HalfCheetahPyBulletEnv-v0
-max_episode_len: 1000000
+max_episode_len: 1000
 ## Data collection and optimization loop
 seed: 0
-num_envs: 1
-num_steps: 2048
-num_mini_batch: 32
-ppo_epoch: 10
-max_training_steps: 1000000
+num_envs: 1 #16 ###
+num_steps: 8192 #512 ###
+num_mini_batch: 64
+ppo_epoch: 20
+max_training_steps: 2000000
 ## Handling of timesteps
 discount_factor: 0.99
 ## Optimizer
-lr: 0.0003
-use_linear_lr_decay: true
+lr: 0.0003 #0.00003 ###
+use_linear_lr_decay: true #false ###
 # Model structure config
 model_type: PPO
 hidden_dim: &hidden_dim 64
 use_recurrent: false
 # PPO config
-clip_param: 0.20
+clip_param: 0.40
 value_loss_coef: 0.5
 entropy_coef: 0
 max_grad_norm: 0.5
 use_clipped_value_loss: true
 use_gae: true
-gae_lambda: 0.95
+gae_lambda: 0.9
 use_proper_time_limits: true
 
 # Test
-eval_freq: 50
+eval_freq: 12
 test_num_episodes: 10
 test_max_episode_len: 1000
 test_gui: true
-model_path: /data2/cwkang/RL/git/repro/rep2/results/22-06-29/10-25-43/checkpoint_450.tar
+model_path: /data2/cwkang/RL/git/repro/rep2/results/22-06-29/15-51-28/checkpoint_216.tar
 
 # Logging / Saving
 log_freq: 1
-save_freq: 50
+save_freq: 12
 
 # Domain randomization [domain_name, lower_bound, upper_bound, step_size] (lower, upper bounds are multipliers)
 # domain_randomization:

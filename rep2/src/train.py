@@ -89,6 +89,7 @@ def get_domain(env, keys):
 
 def train(env_name, agent, domain_randomization_dict, flags, logger):
     envs = make_vec_envs(env_name, flags.seed, flags.num_envs, flags.discount_factor, None, flags.device, False)
+    # envs = make_vec_envs(env_name, flags.seed, flags.num_envs, None, None, flags.device, False)
 
     domain_names = list(domain_randomization_dict.keys())
 
@@ -111,6 +112,10 @@ def train(env_name, agent, domain_randomization_dict, flags, logger):
         if flags.use_linear_lr_decay:
             update_linear_schedule(agent.optimizer, j, num_updates, flags.lr)
 
+        # randomize(envs[i], domain_randomization_dict)
+        obs = envs.reset() #### TODO: need to reset a single env only.
+        rollouts.obs[0].copy_(obs)
+        rollouts.to(flags.device)
         # Collect data
         for step in range(flags.num_steps):
             with torch.no_grad():
@@ -140,8 +145,6 @@ def train(env_name, agent, domain_randomization_dict, flags, logger):
                     total_rewards[i] = 0
                     timesteps[i] = 0
                     num_episodes += 1
-                    obs = envs.reset() #### TODO: need to reset a single env only.
-                    # randomize(envs[i], domain_randomization_dict)
 
         num_samples += flags.num_envs*flags.num_steps
 
