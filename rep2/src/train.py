@@ -9,19 +9,22 @@ import torch
 from omegaconf import OmegaConf
 
 from agent import PPO
-from agent.envs import make_vec_envs_custom
-from agent.utils import update_linear_schedule
+from agent.envs import make_vec_envs
+from agent.utils import update_linear_schedule, get_vec_normalize
 from agent.storage import RolloutStorage
-
-from envs import CartPoleEnv, PendulumEnv
-# from utils.buffer import ReplayMemory
 from utils.logger import PlatformLogger
 
-def eval(env_class, agent, domain_randomization_dict, flags, logger):
-    env = env_class()
+def eval(env_name, agent, seed, domain_randomization_dict, flags, logger):
+    env = make_vec_envs(env_name, seed + flags.seed + flags.num_envs, 1, None, None, flags.device, True)
+
+    vec_norm = get_vec_normalize(env)
+    if vec_norm is not None:
+        vec_norm.eval()
+        vec_norm.obs_rms = agent.obs_rms
 
     domain_names = list(domain_randomization_dict.keys())
-    total_rewards = [0] * flags.test_num_episodes
+    episode_rewards = [0] * flags.test_num_episodes
+    episode_len = [0] * flags.test_num_episodes
     for i in range(flags.test_num_episodes):
         done = False
         randomize(env, domain_randomization_dict)
@@ -32,25 +35,46 @@ def eval(env_class, agent, domain_randomization_dict, flags, logger):
         eval_masks = torch.zeros(1, 1, device=flags.device)
         for _ in range(flags.test_max_episode_len):
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states = agent.actor_critic.act(
-                    torch.from_numpy(obs).unsqueeze(0).to(flags.device),
+                _, action, _, eval_recurrent_hidden_states = agent.actor_critic.act(
+                    obs,
                     eval_recurrent_hidden_states,
                     eval_masks,
                     deterministic=True)
             
-            obs, reward, done, infos = env.step(action.detach().cpu().numpy().flatten())
-            total_rewards[i] += reward
+            obs, reward, done, infos = env.step(action)
+
+            eval_masks = torch.tensor(
+                [[0.0] if done_ else [1.0] for done_ in done],
+                dtype=torch.float32,
+                device=flags.device)
+
+            episode_rewards[i] += reward.item()
+            episode_len[i] += 1
             
             if done:
                 break
+
+    env.close()
             
     info_dict = {
-        "return_mean" : float(np.mean(total_rewards)),
-        "return_median" : float(np.median(total_rewards)),
-        "return_var" : float(np.var(total_rewards))
+        "episode_return_mean" : np.mean(episode_rewards),
+        "episode_return_median" : np.median(episode_rewards),
+        "episode_return_var" : np.var(episode_rewards),
+        "episode_len_mean": np.mean(episode_len),
     }
     logger.log_eval(info_dict)
     
+# Put this code to envs.
+# def get_simulator_parameters(self, keys): ####
+#     return [getattr(self, key)/getattr(self, key+'_original') if hasattr(self, key+'_original') else 1 for key in keys]
+
+# def set_simulator_parameters(self, params): ####
+#     # params: dict with (param_name, scaling_factor)
+#     for key in params:
+#         if not hasattr(self, key+'_original'):
+#             setattr(self, key+'_original', getattr(self, key))
+#         setattr(self, key, params[key]*getattr(self, key+'_original'))
+
 def randomize(env, domain_randomization_dict):
     if len(domain_randomization_dict) <= 0:
         return
@@ -63,8 +87,8 @@ def get_domain(env, keys):
         return np.array([])
     return np.array(env.get_simulator_parameters(keys), dtype=np.float32)
 
-def train(env_class, agent, domain_randomization_dict, flags, logger):
-    envs = make_vec_envs_custom(env_class, flags.seed, flags.num_envs, flags.discount_factor, None, flags.device, False)
+def train(env_name, agent, domain_randomization_dict, flags, logger):
+    envs = make_vec_envs(env_name, flags.seed, flags.num_envs, flags.discount_factor, None, flags.device, False)
 
     domain_names = list(domain_randomization_dict.keys())
 
@@ -137,7 +161,8 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
 
         # Save model
         if j % flags.save_freq == 0:
-            agent.save(os.path.join(logger.result_path, f"checkpoint_{j}.tar"))
+            agent.save(getattr(get_vec_normalize(envs), 'obs_rms', None),
+                os.path.join(logger.result_path, f"checkpoint_{j}.tar"))
             print("[INFO] Checkpoint is saved")
 
         # Logging
@@ -145,6 +170,9 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
             info_dict = {
                 "num_samples": float(num_samples),
                 "num_episodes": float(num_episodes),
+                "value_loss": value_loss,
+                "action_loss": action_loss,
+                "dist_entropy": dist_entropy,
             }
             if len(episode_rewards) > 0:
                 info_dict.update({"episode_return_mean": np.mean(episode_rewards)})
@@ -154,11 +182,13 @@ def train(env_class, agent, domain_randomization_dict, flags, logger):
 
         # Evaluation
         if j % flags.eval_freq == 0:
-            eval(env_class, agent, domain_randomization_dict, flags, logger)
+            agent.obs_rms = get_vec_normalize(envs).obs_rms
+            eval(env_name, agent, j // flags.eval_freq, domain_randomization_dict, flags, logger)
             print("[INFO] Evaluation is done")
    
     print("Train is Finished!")
-    agent.save(os.path.join(logger.result_path, f"checkpoint.tar"))
+    agent.save(getattr(get_vec_normalize(envs), 'obs_rms', None),
+        os.path.join(logger.result_path, f"checkpoint.tar"))
                 
 if __name__ == "__main__":
     date_now = datetime.datetime.now().__str__()
@@ -179,14 +209,6 @@ if __name__ == "__main__":
 
     torch.set_num_threads(1)
 
-    env_class = {
-        "cartpole": CartPoleEnv,
-        "pendulum": PendulumEnv,
-        "hopper": lambda x=None : gym.make("HopperPyBulletEnv-v0"),
-        "halfcheetah": lambda x=None : gym.make("HalfCheetahPyBulletEnv-v0"),
-        "walker": lambda x=None : gym.make("Walker2DPyBulletEnv-v0"),
-    }[flags.env]
-
     domain_randomization_dict = {}
     if hasattr(flags, 'domain_randomization'):
         for dr in flags.domain_randomization:
@@ -194,8 +216,9 @@ if __name__ == "__main__":
             random_range = np.arange(*dr[1:])
             domain_randomization_dict.update({domain_name: random_range})
 
-    dummy_env = env_class()
+    dummy_env = gym.make(flags.env_name)
     domain_dim = len(domain_randomization_dict)
     agent = PPO(dummy_env.observation_space, dummy_env.action_space, domain_dim, flags)
+    dummy_env.close()
     
-    train(env_class, agent, domain_randomization_dict, flags, logger)
+    train(flags.env_name, agent, domain_randomization_dict, flags, logger)

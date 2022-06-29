@@ -1,7 +1,4 @@
 
-# Based on 
-# https://github.com/aayn/crar-pytorch/blob/master/crar/losses.py
-
 
 import torch 
 import torch.nn as nn 

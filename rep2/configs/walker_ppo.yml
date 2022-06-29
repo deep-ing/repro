@@ -1,9 +1,9 @@
 # Training Config
 ## Training device
-device: "cuda:7"
+device: "cpu"
 ## Environment name / maximum episode length
-env: walker
-max_episode_len: 1000
+env_name: Walker2DPyBulletEnv-v0
+max_episode_len: 1000000
 ## Data collection and optimization loop
 seed: 0
 num_envs: 1
@@ -35,7 +35,7 @@ eval_freq: 50
 test_num_episodes: 10
 test_max_episode_len: 1000
 test_gui: true
-# model_path: /data2/cwkang/RL/git/repro/rep2/results/22-06-28/21-07-18/checkpoint_450.tar
+model_path: /data2/cwkang/RL/git/repro/rep2/results/22-06-29/10-25-43/checkpoint_450.tar
 
 # Logging / Saving
 log_freq: 1
@@ -45,22 +45,3 @@ save_freq: 50
 # domain_randomization:
 #   - [m, 0.5, 1.51, 0.25]
 #   - [l, 0.5, 1.51, 0.25]
-
-# --- Model Structure ----
-act: &act Tanh
-actor_net: &actor_net
-  - [Linear, auto, *hidden_dim, {}]
-  - *act
-  - [Linear, *hidden_dim, *hidden_dim, {}]
-  - *act
-  - [Linear, *hidden_dim, auto, {}]
-critic_net: &critic_net
-  - [Linear, auto, *hidden_dim, {}]
-  - *act
-  - [Linear, *hidden_dim, *hidden_dim, {}]
-  - *act
-  - [Linear, *hidden_dim, auto, {}]
-
-# --- Models ---
-actor: *actor_net
-critic: *critic_net

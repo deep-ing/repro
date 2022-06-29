@@ -103,11 +103,13 @@ class PPO(nn.Module):
 
         return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
         
-    def save(self, path):
+    def save(self, obs_rms, path):
         model_state_dicts = []
         model_state_dicts.append(self.actor_critic.state_dict())
+        model_state_dicts.append(obs_rms)
         torch.save(model_state_dicts, path)
         
     def load(self, path):
         model_state_dicts = torch.load(path)
         self.actor_critic.load_state_dict(model_state_dicts[0])
+        self.obs_rms = model_state_dicts[1]

@@ -113,63 +113,7 @@ def make_vec_envs(env_name,
         envs = VecPyTorchFrameStack(envs, 4, device)
 
     return envs
-
-def make_env_custom(env_id, seed, rank, log_dir, allow_early_resets):
-    def _thunk():
-        env = env_id()
-
-        env.seed(seed + rank)
-
-        if str(env.__class__.__name__).find('TimeLimit') >= 0:
-            env = TimeLimitMask(env)
-
-        if log_dir is not None:
-            env = Monitor(env,
-                          os.path.join(log_dir, str(rank)),
-                          allow_early_resets=allow_early_resets)
-
-        # If the input has shape (W,H,3), wrap for PyTorch convolutions
-        obs_shape = env.observation_space.shape
-        if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
-            env = TransposeImage(env, op=[2, 0, 1])
-
-        return env
-
-    return _thunk
-
-def make_vec_envs_custom(env_class,
-                  seed,
-                  num_processes,
-                  gamma,
-                  log_dir,
-                  device,
-                  allow_early_resets,
-                  num_frame_stack=None):
-    envs = [
-        make_env_custom(env_class, seed, i, log_dir, allow_early_resets)
-        for i in range(num_processes)
-    ]
-
-    if len(envs) > 1:
-        envs = SubprocVecEnv(envs)
-    else:
-        envs = DummyVecEnv(envs)
-
-    if len(envs.observation_space.shape) == 1:
-        if gamma is None:
-            envs = VecNormalize(envs, norm_reward=False)
-        else:
-            envs = VecNormalize(envs, gamma=gamma)
-
-    envs = VecPyTorch(envs, device)
-
-    if num_frame_stack is not None:
-        envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
-    elif len(envs.observation_space.shape) == 3:
-        envs = VecPyTorchFrameStack(envs, 4, device)
-
-    return envs
-
+    
 
 # Checks whether done was caused my timit limits or not
 class TimeLimitMask(gym.Wrapper):
