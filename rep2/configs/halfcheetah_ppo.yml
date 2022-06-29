@@ -14,8 +14,8 @@ max_training_steps: 2000000
 ## Handling of timesteps
 discount_factor: 0.99
 ## Optimizer
-lr: 0.0003 #0.00003 ###
-use_linear_lr_decay: true #false ###
+lr: 0.00003
+use_linear_lr_decay: false
 # Model structure config
 model_type: PPO
 hidden_dim: &hidden_dim 64
