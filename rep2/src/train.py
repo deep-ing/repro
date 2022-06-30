@@ -15,7 +15,7 @@ from agent.storage import RolloutStorage
 from utils.logger import PlatformLogger
 
 def eval(env_name, agent, seed, domain_randomization_dict, flags, logger):
-    env = make_vec_envs(env_name, seed + flags.seed + flags.num_envs, 1, None, None, flags.device, True)
+    env = make_vec_envs(env_name, seed + flags.seed + flags.num_envs, 1, None, None, flags, True)
 
     vec_norm = get_vec_normalize(env)
     if vec_norm is not None:
@@ -87,9 +87,8 @@ def get_domain(env, keys):
         return np.array([])
     return np.array(env.get_simulator_parameters(keys), dtype=np.float32)
 
-def train(env_name, agent, domain_randomization_dict, flags, logger):
-    envs = make_vec_envs(env_name, flags.seed, flags.num_envs, flags.discount_factor, None, flags.device, False)
-    # envs = make_vec_envs(env_name, flags.seed, flags.num_envs, None, None, flags.device, False)
+def train(env_name, agent, domain_randomization_dict, flags, RESULT_path, logger):
+    envs = make_vec_envs(env_name, flags.seed, flags.num_envs, flags.discount_factor, RESULT_path, flags, False)
 
     domain_names = list(domain_randomization_dict.keys())
 
@@ -100,8 +99,6 @@ def train(env_name, agent, domain_randomization_dict, flags, logger):
     rollouts.to(flags.device)
 
     # keep data for logging
-    total_rewards = [0] * flags.num_envs
-    timesteps = [0] * flags.num_envs
     episode_rewards = deque(maxlen=10)
     episode_len = deque(maxlen=10)
     num_samples = 0
@@ -112,10 +109,6 @@ def train(env_name, agent, domain_randomization_dict, flags, logger):
         if flags.use_linear_lr_decay:
             update_linear_schedule(agent.optimizer, j, num_updates, flags.lr)
 
-        # randomize(envs[i], domain_randomization_dict)
-        obs = envs.reset() #### TODO: need to reset a single env only.
-        rollouts.obs[0].copy_(obs)
-        rollouts.to(flags.device)
         # Collect data
         for step in range(flags.num_steps):
             with torch.no_grad():
@@ -124,6 +117,12 @@ def train(env_name, agent, domain_randomization_dict, flags, logger):
                     rollouts.masks[step])
 
             obs, reward, done, infos = envs.step(action)
+
+            for info in infos:
+                if 'episode' in info.keys():
+                    episode_rewards.append(info['episode']['r'])
+                    episode_len.append(info['episode']['l'])
+                    num_episodes += 1
             
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
@@ -132,19 +131,6 @@ def train(env_name, agent, domain_randomization_dict, flags, logger):
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
-
-            for i in range(flags.num_envs):
-                # domain = get_domain(envs[i], domain_names)
-
-                total_rewards[i] += reward[i].item()
-                timesteps[i] += 1
-
-                if done[i] or timesteps[i] >= flags.max_episode_len:
-                    episode_rewards.append(total_rewards[i])
-                    episode_len.append(timesteps[i])
-                    total_rewards[i] = 0
-                    timesteps[i] = 0
-                    num_episodes += 1
 
         num_samples += flags.num_envs*flags.num_steps
 
@@ -224,4 +210,4 @@ if __name__ == "__main__":
     agent = PPO(dummy_env.observation_space, dummy_env.action_space, domain_dim, flags)
     dummy_env.close()
     
-    train(flags.env_name, agent, domain_randomization_dict, flags, logger)
+    train(flags.env_name, agent, domain_randomization_dict, flags, RESULT_path, logger)

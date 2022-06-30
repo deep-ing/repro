@@ -3,7 +3,7 @@
 device: "cpu"
 ## Environment name / maximum episode length
 env_name: HalfCheetahPyBulletEnv-v0
-max_episode_len: 1000
+# max_episode_len: 1000
 ## Data collection and optimization loop
 seed: 0
 num_envs: 1 #16 ###
@@ -11,6 +11,9 @@ num_steps: 8192 #512 ###
 num_mini_batch: 64
 ppo_epoch: 20
 max_training_steps: 2000000
+## Obs/reward normalization
+normalize_obs: true
+normalize_reward: true
 ## Handling of timesteps
 discount_factor: 0.99
 ## Optimizer
@@ -18,7 +21,7 @@ lr: 0.00003
 use_linear_lr_decay: false
 # Model structure config
 model_type: PPO
-hidden_dim: &hidden_dim 64
+# hidden_dim: &hidden_dim 64
 use_recurrent: false
 # PPO config
 clip_param: 0.40
@@ -35,7 +38,6 @@ eval_freq: 12
 test_num_episodes: 10
 test_max_episode_len: 1000
 test_gui: true
-model_path: /data2/cwkang/RL/git/repro/rep2/results/22-06-29/15-51-28/checkpoint_216.tar
 
 # Logging / Saving
 log_freq: 1

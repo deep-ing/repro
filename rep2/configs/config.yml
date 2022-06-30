@@ -2,15 +2,18 @@
 ## Training device
 device: "cpu"
 ## Environment name / maximum episode length
-env_name: Walker2DPyBulletEnv-v0
-max_episode_len: 1000
+env_name: HumanoidPyBulletEnv-v0
+# max_episode_len: 1000
 ## Data collection and optimization loop
 seed: 0
 num_envs: 1
-num_steps: 4096
+num_steps: 2048
 num_mini_batch: 32
 ppo_epoch: 10
 max_training_steps: 1000000
+## Obs/reward normalization
+normalize_obs: true
+normalize_reward: true
 ## Handling of timesteps
 discount_factor: 0.99
 ## Optimizer
@@ -18,7 +21,7 @@ lr: 0.0003
 use_linear_lr_decay: true
 # Model structure config
 model_type: PPO
-hidden_dim: &hidden_dim 64
+# hidden_dim: &hidden_dim 64
 use_recurrent: false
 # PPO config
 clip_param: 0.20
@@ -35,7 +38,6 @@ eval_freq: 50
 test_num_episodes: 10
 test_max_episode_len: 1000
 test_gui: true
-model_path: /data2/cwkang/RL/git/repro/rep2/results/22-06-29/10-25-43/checkpoint_450.tar
 
 # Logging / Saving
 log_freq: 1

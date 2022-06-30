@@ -1,3 +1,4 @@
+import argparse
 import time
 
 import gym
@@ -13,7 +14,7 @@ from agent.utils import get_vec_normalize
 from train import randomize, get_domain
 
 def test_agent(env_name, agent, flags):
-    env = make_vec_envs(env_name, 12345, 1, None, None, flags.device, True)
+    env = make_vec_envs(env_name, 12345, 1, None, None, flags, True)
 
     vec_norm = get_vec_normalize(env)
     if vec_norm is not None:
@@ -67,7 +68,14 @@ def test_agent(env_name, agent, flags):
     print('Episode length (mean/std):', np.mean(episode_len), np.std(episode_len))
 
 if __name__ == "__main__":
-    flags = OmegaConf.load("configs/config.yml")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--checkpoint_path', required=True)
+
+    args = parser.parse_args()
+
+    config_path = args.checkpoint_path.replace(args.checkpoint_path.split('/')[-1], 'config.yaml')
+    
+    flags = OmegaConf.load(config_path)
 
     domain_randomization_dict = {}
     if hasattr(flags, 'domain_randomization'):
@@ -82,7 +90,7 @@ if __name__ == "__main__":
     dummy_env.close()
 
     try:
-        agent.load(flags.model_path)
+        agent.load(args.checkpoint_path)
         print('\ntrained model loaded!\n')
     except:
         agent = None
