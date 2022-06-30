@@ -2,7 +2,7 @@
 ## Training device
 device: "cpu"
 ## Environment name / maximum episode length
-env_name: HumanoidPyBulletEnv-v0
+env_name: HopperPyBulletEnv-v0
 # max_episode_len: 1000
 ## Data collection and optimization loop
 seed: 0

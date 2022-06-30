@@ -176,6 +176,9 @@ def train(env_name, agent, domain_randomization_dict, flags, RESULT_path, logger
             print("[INFO] Evaluation is done")
    
     print("Train is Finished!")
+    agent.obs_rms = get_vec_normalize(envs).obs_rms
+    eval(env_name, agent, j // flags.eval_freq, domain_randomization_dict, flags, logger)
+    print("[INFO] Evaluation is done")
     agent.save(getattr(get_vec_normalize(envs), 'obs_rms', None),
         os.path.join(logger.result_path, f"checkpoint.tar"))
                 
